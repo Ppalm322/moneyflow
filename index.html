@@ -277,11 +277,38 @@
 
   <!-- ===== AUTH GATE (โหมดคลาวด์: ต้องล็อกอินก่อนใช้) ===== -->
   <div class="lightbox" id="authGate" hidden style="background:radial-gradient(circle at 50% -10%,rgba(99,91,255,.28),transparent 45%),linear-gradient(180deg,#11152a,#0f1326)">
-    <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-[0_30px_80px_rgba(0,0,0,.5)]">
-      <div class="w-14 h-14 rounded-2xl grid place-items-center mx-auto mb-4 text-2xl font-black bg-gradient-to-br from-[#786dff] to-[#9d6cff] text-white">M</div>
-      <h2 class="text-xl font-black mb-1.5">MoneyFlow</h2>
-      <p class="text-muted text-sm mb-6">เข้าสู่ระบบเพื่อใช้ข้อมูลร่วมกันได้ทุกเครื่อง</p>
-      <button id="gateLogin" class="w-full h-12 rounded-xl bg-[#1877F2] text-white font-extrabold flex items-center justify-center gap-2 transition hover:brightness-95"><span class="font-black">f</span> เข้าสู่ระบบด้วย Facebook</button>
+    <div class="bg-white rounded-3xl p-7 max-w-sm w-full shadow-[0_30px_80px_rgba(0,0,0,.5)]">
+      <div class="text-center">
+        <div class="w-14 h-14 rounded-2xl grid place-items-center mx-auto mb-4 text-2xl font-black bg-gradient-to-br from-[#786dff] to-[#9d6cff] text-white">M</div>
+        <h2 class="text-xl font-black mb-1.5">MoneyFlow</h2>
+        <p id="authSub" class="text-muted text-sm mb-5">เข้าสู่ระบบเพื่อใช้ข้อมูลร่วมกันได้ทุกเครื่อง</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-1 p-1 mb-5 rounded-2xl bg-[#f0f1f5]">
+        <button id="tabLogin" type="button" class="h-10 rounded-xl text-sm font-extrabold transition bg-white text-ink shadow-soft">เข้าสู่ระบบ</button>
+        <button id="tabSignup" type="button" class="h-10 rounded-xl text-sm font-extrabold transition text-muted">สมัครสมาชิก</button>
+      </div>
+
+      <form id="authForm" class="space-y-3 text-left" autocomplete="on">
+        <div id="nameRow" class="hidden">
+          <label class="block text-[.72rem] font-bold text-muted mb-1">ชื่อที่แสดง</label>
+          <input id="authName" type="text" autocomplete="name" placeholder="เช่น ปาล์ม"
+            class="w-full h-12 px-4 rounded-xl border border-line bg-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        </div>
+        <div>
+          <label class="block text-[.72rem] font-bold text-muted mb-1">อีเมล</label>
+          <input id="authEmail" type="email" autocomplete="email" required placeholder="you@email.com"
+            class="w-full h-12 px-4 rounded-xl border border-line bg-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        </div>
+        <div>
+          <label class="block text-[.72rem] font-bold text-muted mb-1">รหัสผ่าน</label>
+          <input id="authPass" type="password" autocomplete="current-password" required minlength="6" placeholder="อย่างน้อย 6 ตัวอักษร"
+            class="w-full h-12 px-4 rounded-xl border border-line bg-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        </div>
+        <p id="authMsg" class="hidden text-sm font-semibold px-1"></p>
+        <button id="authSubmit" type="submit"
+          class="w-full h-12 rounded-xl bg-primary text-white font-extrabold transition hover:bg-primaryd disabled:opacity-60 disabled:cursor-not-allowed">เข้าสู่ระบบ</button>
+      </form>
     </div>
   </div>
 

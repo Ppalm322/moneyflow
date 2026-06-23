@@ -240,29 +240,95 @@
     if(!n){ n=(prompt("ระบุชื่อของคุณ (ใช้บันทึกว่าใครเป็นคนแก้ไข)","")||"").trim(); if(!n) n="ไม่ระบุชื่อ"; try{ localStorage.setItem(USERNAME_KEY,n); }catch{} }
     return n;
   }
+  function avatarInitial(name){ return (String(name||"?").trim().charAt(0)||"?").toUpperCase(); }
   function renderUser(){
     const el=$("userArea");
     if(user){
       el.innerHTML=`<div class="flex items-center gap-2.5">
-        <img src="${escapeHtml(user.picture||"")}" referrerpolicy="no-referrer" class="w-10 h-10 rounded-2xl object-cover bg-[#20273a]" alt="" />
+        <div class="w-10 h-10 rounded-2xl grid place-items-center bg-gradient-to-br from-primary to-primaryd text-white font-black">${escapeHtml(avatarInitial(user.name))}</div>
         <div class="leading-tight"><div class="text-sm font-extrabold max-w-[8rem] truncate">${escapeHtml(user.name)}</div><button id="authLogout" class="text-[.7rem] text-muted hover:text-expense">ออกจากระบบ</button></div></div>`;
       $("authLogout").onclick=logout;
     } else {
-      el.innerHTML=`<button id="authLoginBtn" class="flex items-center gap-2 h-11 px-4 rounded-2xl bg-[#1877F2] text-white font-extrabold text-[.82rem] shadow-soft transition hover:brightness-95"><span class="text-base leading-none font-black">f</span> เข้าสู่ระบบด้วย Facebook</button>`;
+      el.innerHTML=`<button id="authLoginBtn" class="flex items-center gap-2 h-11 px-4 rounded-2xl bg-primary text-white font-extrabold text-[.82rem] shadow-soft transition hover:bg-primaryd">เข้าสู่ระบบ</button>`;
       $("authLoginBtn").onclick=login;
     }
   }
-  function renderGate(){ const g=$("authGate"); if(g){ g.hidden=!(CLOUD && !user); const b=$("gateLogin"); if(b) b.onclick=login; } }
+
+  /* ===== หน้าสมัคร/ล็อกอิน (อีเมล + รหัสผ่าน ผ่าน Supabase Auth) ===== */
+  let authMode="login", authWired=false;
+  function authShowMsg(text,kind){
+    const el=$("authMsg"); if(!el) return;
+    if(!text){ el.classList.add("hidden"); el.textContent=""; return; }
+    el.textContent=text;
+    el.className=`text-sm font-semibold px-1 ${kind==="ok"?"text-income":"text-expense"}`;
+  }
+  function setAuthMode(mode){
+    authMode=mode; const isSignup=mode==="signup";
+    const on="h-10 rounded-xl text-sm font-extrabold transition bg-white text-ink shadow-soft";
+    const off="h-10 rounded-xl text-sm font-extrabold transition text-muted";
+    if($("tabLogin"))  $("tabLogin").className = isSignup?off:on;
+    if($("tabSignup")) $("tabSignup").className= isSignup?on:off;
+    if($("nameRow"))   $("nameRow").classList.toggle("hidden",!isSignup);
+    if($("authPass"))  $("authPass").autocomplete = isSignup?"new-password":"current-password";
+    if($("authSubmit"))$("authSubmit").textContent = isSignup?"สมัครสมาชิก":"เข้าสู่ระบบ";
+    if($("authSub"))   $("authSub").textContent = isSignup?"สร้างบัญชีใหม่เพื่อเก็บข้อมูลบนคลาวด์ ใช้ได้ทุกเครื่อง":"เข้าสู่ระบบเพื่อใช้ข้อมูลร่วมกันได้ทุกเครื่อง";
+    authShowMsg("");
+  }
+  function authErrMsg(e){
+    const m=(e&&e.message)||String(e);
+    if(/Invalid login credentials/i.test(m)) return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+    if(/already registered|already been registered|User already/i.test(m)) return "อีเมลนี้สมัครไว้แล้ว ลองเข้าสู่ระบบแทน";
+    if(/Email not confirmed/i.test(m)) return "ยังไม่ได้ยืนยันอีเมล โปรดตรวจสอบกล่องจดหมายก่อนเข้าสู่ระบบ";
+    if(/Password should be|at least 6/i.test(m)) return "รหัสผ่านต้องอย่างน้อย 6 ตัวอักษร";
+    if(/valid email|invalid format/i.test(m)) return "รูปแบบอีเมลไม่ถูกต้อง";
+    return m;
+  }
+  async function onAuthSubmit(ev){
+    ev.preventDefault();
+    if(!CLOUD||!sb) return;
+    const email=($("authEmail").value||"").trim();
+    const pass=$("authPass").value||"";
+    const name=($("authName").value||"").trim();
+    const btn=$("authSubmit"), label=btn.textContent;
+    btn.disabled=true; btn.textContent="กำลังดำเนินการ…"; authShowMsg("");
+    try{
+      if(authMode==="signup"){
+        const { data, error }=await sb.auth.signUp({ email, password:pass, options:{ data:{ full_name:name||email.split("@")[0] } } });
+        if(error) throw error;
+        if(!data.session){ authShowMsg("สมัครสำเร็จ! ตรวจสอบอีเมลเพื่อยืนยัน แล้วกลับมาเข้าสู่ระบบ","ok"); setAuthMode("login"); }
+        // ถ้ามี session กลับมา = เข้าสู่ระบบทันที (onAuthStateChange จะพาเข้าแอป)
+      } else {
+        const { error }=await sb.auth.signInWithPassword({ email, password:pass });
+        if(error) throw error;
+      }
+    }catch(e){ authShowMsg(authErrMsg(e),"error"); }
+    finally{ btn.disabled=false; btn.textContent=label; }
+  }
+  function wireAuthGate(){
+    if(authWired) return;
+    const form=$("authForm"); if(!form) return;
+    authWired=true;
+    if($("tabLogin"))  $("tabLogin").onclick =()=>setAuthMode("login");
+    if($("tabSignup")) $("tabSignup").onclick=()=>setAuthMode("signup");
+    form.onsubmit=onAuthSubmit;
+    setAuthMode("login");
+  }
+  function renderGate(){ const g=$("authGate"); if(g){ wireAuthGate(); g.hidden=!(CLOUD && !user); } }
   function setUserFromSession(session){
     const u=session&&session.user;
     if(u){ const m=u.user_metadata||{}; user={ name:m.full_name||m.name||u.email||"ผู้ใช้", picture:m.avatar_url||m.picture||"", id:u.id }; }
     else user=null;
   }
   function login(){
-    if(CLOUD){ sb.auth.signInWithOAuth({ provider:"facebook", options:{ redirectTo: location.origin } }); }
+    if(CLOUD){ renderGate(); }   // โหมดคลาวด์: แสดงหน้าสมัคร/ล็อกอิน
     else { const n=(prompt("ตั้งชื่อผู้ใช้ (โหมดในเครื่อง)","")||"").trim(); if(n){ user={ name:n, picture:"", id:null }; try{ localStorage.setItem(USERNAME_KEY,n); }catch{} renderUser(); } }
   }
-  function logout(){ if(CLOUD && sb){ sb.auth.signOut(); } user=null; renderUser(); renderGate(); toast("ออกจากระบบแล้ว"); }
+  function logout(){
+    if(CLOUD && sb){ sb.auth.signOut(); }
+    user=null;
+    if($("authPass")) $("authPass").value="";
+    renderUser(); renderGate(); toast("ออกจากระบบแล้ว");
+  }
 
   /* ===== CLOUD DATA (Supabase) ===== */
   function rowToEntry(r){ return { id:r.id, type:r.type, amount:Number(r.amount), category:r.category, note:r.note||"", date:r.date, time:r.time||"00:00", receipt:r.receipt||"", createdBy:r.created_by||null, editedBy:r.edited_by||null, createdAt:r.created_at, updatedAt:r.edited_at }; }
