@@ -2,6 +2,9 @@
 
 ระบบใช้ **Supabase** (ฐานข้อมูล + Auth) เป็น backend ทำตาม 4 ขั้น แล้วใส่คีย์ 2 ตัวในไฟล์ `app.js`
 
+> **URL เว็บคงที่ (ใช้ค่านี้ทุกที่ที่ต้องลงทะเบียน):** `https://moneyflow-pp.vercel.app`
+> (เป็น alias ถาวร ไม่เปลี่ยนตาม deploy — เอาไปใส่ใน Facebook OAuth Redirect / Supabase Site URL ได้เลย)
+
 ## 1) สร้าง Supabase project
 1. ไปที่ https://supabase.com → Sign in (ใช้ GitHub/อีเมลก็ได้) → **New project**
 2. ตั้งชื่อ + ตั้งรหัส database → รอสร้างเสร็จ
