@@ -39,8 +39,8 @@
        - SUPABASE_ANON_KEY  (anon public key — ปลอดภัยที่จะอยู่ในเว็บ เพราะมี RLS ป้องกัน)
      เมื่อใส่แล้ว: ข้อมูลจะเก็บบนคลาวด์ ใช้ได้หลายเครื่องหลายคน + login ผ่าน Facebook (ตั้งใน Supabase Auth)
      ถ้าเว้นว่าง: แอปจะทำงานแบบเก็บในเครื่อง (localStorage) เหมือนเดิม                                  */
-  const SUPABASE_URL = "";
-  const SUPABASE_ANON_KEY = "";
+  const SUPABASE_URL = "https://piqqtuadcgdpkxzviffn.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_FUpYgEcv8SSo4AfPw-VjiA_PoRXFe0y";
   const USERNAME_KEY = "moneyflow-user-name";
   const CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
   let sb = null;          // Supabase client (เมื่อ CLOUD)
