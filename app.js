@@ -33,10 +33,10 @@
   let selectedType="expense", chartRange="today", activeFilter="all", searchTerm="";
   let formReceipt="", editReceipt="", editType="expense", isSubmitting=false;
 
-  /* ===== LINE LOGIN (LIFF) + ผู้ใช้ ===== */
-  const LIFF_ID = "";   // ⬅️ ใส่ LIFF ID จาก LINE Developers Console (LINE Login → LIFF) แล้ว login จะใช้งานได้
+  /* ===== FACEBOOK LOGIN + ผู้ใช้ ===== */
+  const FB_APP_ID = "";   // ⬅️ ใส่ App ID จาก developers.facebook.com (Facebook Login for Web) แล้ว login จะใช้งานได้
   const USERNAME_KEY = "moneyflow-user-name";
-  let lineUser = null;  // { name, id, picture } เมื่อ login ผ่าน LINE สำเร็จ
+  let fbUser = null;      // { name, id, picture } เมื่อ login ผ่าน Facebook สำเร็จ
 
   const $=id=>document.getElementById(id);
   const fmt=n=>new Intl.NumberFormat("th-TH",{style:"currency",currency:"THB",minimumFractionDigits:2}).format(Number(n)||0);
@@ -150,7 +150,7 @@
     if(!amount||isNaN(amount)||amount<=0){ $("amount").classList.add("invalid"); $("amountError").textContent="กรุณากรอกจำนวนเงินมากกว่า 0"; $("amount").focus(); return; }
     let category=$("category").value; if(category==="__add__"||!category) category=catsFor(selectedType)[0];
     isSubmitting=true; const btn=$("submitBtn"); btn.disabled=true;
-    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(lineUser?lineUser.name:null) };
+    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(fbUser?fbUser.name:null) };
     colorFor(category); entries.push(entry);
     const r=Store.saveEntries(entries); handleSaveResult(r);
     resetForm(); render();
@@ -221,47 +221,51 @@
   });
   $("soonOk").onclick=()=>closeModal("soonOverlay");
 
-  /* ===== LINE LOGIN + EDITOR IDENTITY ===== */
-  // ชื่อผู้แก้ไข: ใช้ชื่อจาก LINE ถ้าล็อกอิน ไม่งั้นถามครั้งแรกแล้วจำไว้ในเครื่อง
+  /* ===== FACEBOOK LOGIN + EDITOR IDENTITY ===== */
+  // ชื่อผู้แก้ไข: ใช้ชื่อจาก Facebook ถ้าล็อกอิน ไม่งั้นถามครั้งแรกแล้วจำไว้ในเครื่อง
   function currentEditorName(){
-    if(lineUser) return lineUser.name;
+    if(fbUser) return fbUser.name;
     let n=localStorage.getItem(USERNAME_KEY);
     if(!n){ n=(prompt("ระบุชื่อของคุณ (ใช้บันทึกว่าใครเป็นคนแก้ไข)","")||"").trim(); if(!n) n="ไม่ระบุชื่อ"; try{ localStorage.setItem(USERNAME_KEY,n); }catch{} }
     return n;
   }
   function renderUser(){
     const el=$("userArea");
-    if(lineUser){
+    if(fbUser){
       el.innerHTML=`<div class="flex items-center gap-2.5">
-        <img src="${escapeHtml(lineUser.picture||"")}" referrerpolicy="no-referrer" class="w-10 h-10 rounded-2xl object-cover bg-[#20273a]" alt="" />
-        <div class="leading-tight"><div class="text-sm font-extrabold max-w-[8rem] truncate">${escapeHtml(lineUser.name)}</div><button id="lineLogout" class="text-[.7rem] text-muted hover:text-expense">ออกจากระบบ</button></div></div>`;
-      $("lineLogout").onclick=()=>{ try{ if(window.liff&&liff.isLoggedIn&&liff.isLoggedIn()) liff.logout(); }catch{} lineUser=null; renderUser(); toast("ออกจากระบบ LINE แล้ว"); };
+        <img src="${escapeHtml(fbUser.picture||"")}" referrerpolicy="no-referrer" class="w-10 h-10 rounded-2xl object-cover bg-[#20273a]" alt="" />
+        <div class="leading-tight"><div class="text-sm font-extrabold max-w-[8rem] truncate">${escapeHtml(fbUser.name)}</div><button id="fbLogout" class="text-[.7rem] text-muted hover:text-expense">ออกจากระบบ</button></div></div>`;
+      $("fbLogout").onclick=fbLogout;
     } else {
-      el.innerHTML=`<button id="lineLoginBtn" class="flex items-center gap-2 h-11 px-4 rounded-2xl bg-[#06C755] text-white font-extrabold text-[.82rem] shadow-soft transition hover:brightness-95"><span class="text-base leading-none">💬</span> เข้าสู่ระบบด้วย LINE</button>`;
-      $("lineLoginBtn").onclick=lineLogin;
+      el.innerHTML=`<button id="fbLoginBtn" class="flex items-center gap-2 h-11 px-4 rounded-2xl bg-[#1877F2] text-white font-extrabold text-[.82rem] shadow-soft transition hover:brightness-95"><span class="text-base leading-none font-black">f</span> เข้าสู่ระบบด้วย Facebook</button>`;
+      $("fbLoginBtn").onclick=fbLogin;
     }
   }
-  function lineLogin(){
-    if(!LIFF_ID){ toast("ยังไม่ได้ตั้งค่า LINE — ใส่ LIFF ID ใน app.js ก่อนครับ","error"); return; }
-    if(!window.liff){ toast("LIFF SDK ยังไม่โหลด ลองรีเฟรช","error"); return; }
-    try{ if(!liff.isLoggedIn()) liff.login(); }catch{ toast("เริ่ม LINE login ไม่สำเร็จ","error"); }
+  function fetchFbProfile(){
+    if(!window.FB) return;
+    FB.api("/me",{fields:"name,picture.width(100).height(100)"},u=>{
+      if(u&&u.name){ fbUser={ name:u.name, id:u.id, picture:(u.picture&&u.picture.data&&u.picture.data.url)||"" }; }
+      renderUser();
+    });
   }
-  async function initLine(){
-    if(LIFF_ID && window.liff){
-      try{
-        await liff.init({ liffId:LIFF_ID });
-        if(liff.isLoggedIn()){
-          const p=await liff.getProfile();
-          lineUser={ name:p.displayName, id:p.userId, picture:p.pictureUrl };
-        }
-      }catch(e){ /* config ผิด/ยังไม่ผูก URL — ปล่อยให้กดปุ่ม login เอง */ }
-    }
-    renderUser();
+  function fbLogin(){
+    if(!FB_APP_ID){ toast("ยังไม่ได้ตั้งค่า Facebook — ใส่ App ID ใน app.js ก่อนครับ","error"); return; }
+    if(!window.FB){ toast("Facebook SDK ยังไม่โหลด ลองรีเฟรช","error"); return; }
+    FB.login(r=>{ if(r.status==="connected") fetchFbProfile(); }, { scope:"public_profile" });
+  }
+  function fbLogout(){ try{ if(window.FB) FB.logout(()=>{}); }catch{} fbUser=null; renderUser(); toast("ออกจากระบบ Facebook แล้ว"); }
+  function initFacebook(){
+    if(!FB_APP_ID){ renderUser(); return; }
+    window.fbAsyncInit=function(){
+      FB.init({ appId:FB_APP_ID, cookie:true, xfbml:false, version:"v21.0" });
+      FB.getLoginStatus(r=>{ if(r.status==="connected") fetchFbProfile(); else renderUser(); });
+    };
+    (function(d,s,id){ if(d.getElementById(id)) return; const js=d.createElement(s); js.id=id; js.src="https://connect.facebook.net/th_TH/sdk.js"; const f=d.getElementsByTagName(s)[0]; f.parentNode.insertBefore(js,f); })(document,"script","facebook-jssdk");
   }
 
   /* ===== INIT ===== */
   if(!Store.enabled) handleSaveResult("disabled");
-  initLine();
+  initFacebook();
   entries.forEach(e=>{ if(e.type==="expense") colorFor(e.category); });
   setNow(); populateSelect($("category"),selectedType); render();
   let lastDay=todayKey();
