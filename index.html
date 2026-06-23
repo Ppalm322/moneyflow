@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
     tailwind.config = { theme: { extend: {
       colors: { primary:'#635bff', primaryd:'#8667ff', primarysoft:'#f0efff',
@@ -100,7 +101,7 @@
           <div class="flex items-center gap-2.5 h-11 px-4 rounded-2xl bg-white/85 border border-line text-[#4b5563] text-[.82rem] font-semibold shadow-soft">
             <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_0_5px_#f0efff]"></span><span id="todayLabel"></span>
           </div>
-          <div class="w-11 h-11 rounded-2xl grid place-items-center bg-gradient-to-br from-[#20273a] to-[#101827] text-white font-extrabold text-sm shadow-[0_10px_25px_rgba(17,24,39,.17)]">PP</div>
+          <div id="userArea" class="flex items-center"></div>
         </div>
       </header>
 

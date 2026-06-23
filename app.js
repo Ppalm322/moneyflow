@@ -33,6 +33,11 @@
   let selectedType="expense", chartRange="today", activeFilter="all", searchTerm="";
   let formReceipt="", editReceipt="", editType="expense", isSubmitting=false;
 
+  /* ===== LINE LOGIN (LIFF) + ผู้ใช้ ===== */
+  const LIFF_ID = "";   // ⬅️ ใส่ LIFF ID จาก LINE Developers Console (LINE Login → LIFF) แล้ว login จะใช้งานได้
+  const USERNAME_KEY = "moneyflow-user-name";
+  let lineUser = null;  // { name, id, picture } เมื่อ login ผ่าน LINE สำเร็จ
+
   const $=id=>document.getElementById(id);
   const fmt=n=>new Intl.NumberFormat("th-TH",{style:"currency",currency:"THB",minimumFractionDigits:2}).format(Number(n)||0);
   const shortFmt=n=>new Intl.NumberFormat("th-TH",{maximumFractionDigits:0}).format(Number(n)||0);
@@ -109,7 +114,7 @@
       const ec=e.type==="expense";
       return `<div class="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] gap-3 items-center py-3.5 px-1.5 border-t border-[#eef1f5] first:border-t-0">
         <div class="w-[2.7rem] h-[2.7rem] rounded-2xl grid place-items-center font-black text-[1.05rem] ${ec?"bg-expensesoft text-expense":"bg-incomesoft text-income"}">${iconFor(e.category,e.type)}</div>
-        <div class="min-w-0"><strong class="block text-[.86rem] truncate">${escapeHtml(e.note||e.category)}</strong><div class="flex items-center gap-1.5 mt-1 text-[#98a1b0] text-[.69rem] flex-wrap"><span>${escapeHtml(e.category)}</span><span>·</span><span>${dt} ${escapeHtml(e.time||"")}</span><span>·</span>${slip}</div></div>
+        <div class="min-w-0"><strong class="block text-[.86rem] truncate">${escapeHtml(e.note||e.category)}</strong><div class="flex items-center gap-1.5 mt-1 text-[#98a1b0] text-[.69rem] flex-wrap"><span>${escapeHtml(e.category)}</span><span>·</span><span>${dt} ${escapeHtml(e.time||"")}</span><span>·</span>${slip}${e.editedBy?`<span>·</span><span class="text-primary/90 font-extrabold">✎ แก้ไขโดย ${escapeHtml(e.editedBy)}</span>`:""}</div></div>
         <div class="text-[.9rem] font-black whitespace-nowrap text-right ${ec?"text-expense":"text-income"}">${sign}${fmt(e.amount)}</div>
         <div class="flex gap-1.5"><button class="txbtn hover:bg-primarysoft hover:text-primary" data-edit="${e.id}" aria-label="แก้ไข">✎</button><button class="txbtn hover:bg-expensesoft hover:text-expense" data-del="${e.id}" aria-label="ลบ">🗑</button></div>
       </div>`;
@@ -145,7 +150,7 @@
     if(!amount||isNaN(amount)||amount<=0){ $("amount").classList.add("invalid"); $("amountError").textContent="กรุณากรอกจำนวนเงินมากกว่า 0"; $("amount").focus(); return; }
     let category=$("category").value; if(category==="__add__"||!category) category=catsFor(selectedType)[0];
     isSubmitting=true; const btn=$("submitBtn"); btn.disabled=true;
-    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString() };
+    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(lineUser?lineUser.name:null) };
     colorFor(category); entries.push(entry);
     const r=Store.saveEntries(entries); handleSaveResult(r);
     resetForm(); render();
@@ -175,7 +180,7 @@
     const amount=parseAmount($("editAmount").value);
     if(!amount||isNaN(amount)||amount<=0){ $("editAmount").classList.add("invalid"); $("editAmountError").textContent="กรุณากรอกจำนวนเงินมากกว่า 0"; return; }
     let category=$("editCategory").value; if(category==="__add__"||!category) category=catsFor(editType)[0]; colorFor(category);
-    entries[idx]={...entries[idx], type:editType, amount, category, note:$("editNote").value.trim(), date:$("editDate").value||todayKey(), time:$("editTime").value||"00:00", receipt:editReceipt, updatedAt:new Date().toISOString()};
+    entries[idx]={...entries[idx], type:editType, amount, category, note:$("editNote").value.trim(), date:$("editDate").value||todayKey(), time:$("editTime").value||"00:00", receipt:editReceipt, updatedAt:new Date().toISOString(), editedBy:currentEditorName()};
     Store.saveEntries(entries); closeModal("editOverlay"); render(); toast("แก้ไขรายการแล้ว","success");
   };
   $("editClose").onclick=$("editCancel").onclick=()=>closeModal("editOverlay");
@@ -216,8 +221,47 @@
   });
   $("soonOk").onclick=()=>closeModal("soonOverlay");
 
+  /* ===== LINE LOGIN + EDITOR IDENTITY ===== */
+  // ชื่อผู้แก้ไข: ใช้ชื่อจาก LINE ถ้าล็อกอิน ไม่งั้นถามครั้งแรกแล้วจำไว้ในเครื่อง
+  function currentEditorName(){
+    if(lineUser) return lineUser.name;
+    let n=localStorage.getItem(USERNAME_KEY);
+    if(!n){ n=(prompt("ระบุชื่อของคุณ (ใช้บันทึกว่าใครเป็นคนแก้ไข)","")||"").trim(); if(!n) n="ไม่ระบุชื่อ"; try{ localStorage.setItem(USERNAME_KEY,n); }catch{} }
+    return n;
+  }
+  function renderUser(){
+    const el=$("userArea");
+    if(lineUser){
+      el.innerHTML=`<div class="flex items-center gap-2.5">
+        <img src="${escapeHtml(lineUser.picture||"")}" referrerpolicy="no-referrer" class="w-10 h-10 rounded-2xl object-cover bg-[#20273a]" alt="" />
+        <div class="leading-tight"><div class="text-sm font-extrabold max-w-[8rem] truncate">${escapeHtml(lineUser.name)}</div><button id="lineLogout" class="text-[.7rem] text-muted hover:text-expense">ออกจากระบบ</button></div></div>`;
+      $("lineLogout").onclick=()=>{ try{ if(window.liff&&liff.isLoggedIn&&liff.isLoggedIn()) liff.logout(); }catch{} lineUser=null; renderUser(); toast("ออกจากระบบ LINE แล้ว"); };
+    } else {
+      el.innerHTML=`<button id="lineLoginBtn" class="flex items-center gap-2 h-11 px-4 rounded-2xl bg-[#06C755] text-white font-extrabold text-[.82rem] shadow-soft transition hover:brightness-95"><span class="text-base leading-none">💬</span> เข้าสู่ระบบด้วย LINE</button>`;
+      $("lineLoginBtn").onclick=lineLogin;
+    }
+  }
+  function lineLogin(){
+    if(!LIFF_ID){ toast("ยังไม่ได้ตั้งค่า LINE — ใส่ LIFF ID ใน app.js ก่อนครับ","error"); return; }
+    if(!window.liff){ toast("LIFF SDK ยังไม่โหลด ลองรีเฟรช","error"); return; }
+    try{ if(!liff.isLoggedIn()) liff.login(); }catch{ toast("เริ่ม LINE login ไม่สำเร็จ","error"); }
+  }
+  async function initLine(){
+    if(LIFF_ID && window.liff){
+      try{
+        await liff.init({ liffId:LIFF_ID });
+        if(liff.isLoggedIn()){
+          const p=await liff.getProfile();
+          lineUser={ name:p.displayName, id:p.userId, picture:p.pictureUrl };
+        }
+      }catch(e){ /* config ผิด/ยังไม่ผูก URL — ปล่อยให้กดปุ่ม login เอง */ }
+    }
+    renderUser();
+  }
+
   /* ===== INIT ===== */
   if(!Store.enabled) handleSaveResult("disabled");
+  initLine();
   entries.forEach(e=>{ if(e.type==="expense") colorFor(e.category); });
   setNow(); populateSelect($("category"),selectedType); render();
   let lastDay=todayKey();
