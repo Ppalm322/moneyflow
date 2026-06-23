@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     tailwind.config = { theme: { extend: {
       colors: { primary:'#635bff', primaryd:'#8667ff', primarysoft:'#f0efff',
@@ -272,6 +273,16 @@
   <div class="lightbox" id="lightbox" hidden>
     <button class="absolute top-5 right-5 w-11 h-11 rounded-full border-0 bg-white/15 text-white text-base cursor-pointer" id="lightboxClose" aria-label="ปิด">✕</button>
     <img id="lightboxImg" class="max-w-full max-h-full rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,.5)]" alt="รูปสลิป" />
+  </div>
+
+  <!-- ===== AUTH GATE (โหมดคลาวด์: ต้องล็อกอินก่อนใช้) ===== -->
+  <div class="lightbox" id="authGate" hidden style="background:radial-gradient(circle at 50% -10%,rgba(99,91,255,.28),transparent 45%),linear-gradient(180deg,#11152a,#0f1326)">
+    <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-[0_30px_80px_rgba(0,0,0,.5)]">
+      <div class="w-14 h-14 rounded-2xl grid place-items-center mx-auto mb-4 text-2xl font-black bg-gradient-to-br from-[#786dff] to-[#9d6cff] text-white">M</div>
+      <h2 class="text-xl font-black mb-1.5">MoneyFlow</h2>
+      <p class="text-muted text-sm mb-6">เข้าสู่ระบบเพื่อใช้ข้อมูลร่วมกันได้ทุกเครื่อง</p>
+      <button id="gateLogin" class="w-full h-12 rounded-xl bg-[#1877F2] text-white font-extrabold flex items-center justify-center gap-2 transition hover:brightness-95"><span class="font-black">f</span> เข้าสู่ระบบด้วย Facebook</button>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>

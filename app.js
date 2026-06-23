@@ -33,10 +33,19 @@
   let selectedType="expense", chartRange="today", activeFilter="all", searchTerm="";
   let formReceipt="", editReceipt="", editType="expense", isSubmitting=false;
 
-  /* ===== FACEBOOK LOGIN + ผู้ใช้ ===== */
-  const FB_APP_ID = "";   // ⬅️ ใส่ App ID จาก developers.facebook.com (Facebook Login for Web) แล้ว login จะใช้งานได้
+  /* ===== CLOUD (Supabase) + FACEBOOK LOGIN =====
+     ใส่ค่า 2 ตัวนี้จาก Supabase (Project Settings → API) เพื่อเปิดโหมดคลาวด์:
+       - SUPABASE_URL      เช่น https://xxxx.supabase.co
+       - SUPABASE_ANON_KEY  (anon public key — ปลอดภัยที่จะอยู่ในเว็บ เพราะมี RLS ป้องกัน)
+     เมื่อใส่แล้ว: ข้อมูลจะเก็บบนคลาวด์ ใช้ได้หลายเครื่องหลายคน + login ผ่าน Facebook (ตั้งใน Supabase Auth)
+     ถ้าเว้นว่าง: แอปจะทำงานแบบเก็บในเครื่อง (localStorage) เหมือนเดิม                                  */
+  const SUPABASE_URL = "";
+  const SUPABASE_ANON_KEY = "";
   const USERNAME_KEY = "moneyflow-user-name";
-  let fbUser = null;      // { name, id, picture } เมื่อ login ผ่าน Facebook สำเร็จ
+  const CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+  let sb = null;          // Supabase client (เมื่อ CLOUD)
+  let user = null;        // ผู้ใช้ปัจจุบัน { name, picture, id }
+  let realtimeOn = false;
 
   const $=id=>document.getElementById(id);
   const fmt=n=>new Intl.NumberFormat("th-TH",{style:"currency",currency:"THB",minimumFractionDigits:2}).format(Number(n)||0);
@@ -150,11 +159,12 @@
     if(!amount||isNaN(amount)||amount<=0){ $("amount").classList.add("invalid"); $("amountError").textContent="กรุณากรอกจำนวนเงินมากกว่า 0"; $("amount").focus(); return; }
     let category=$("category").value; if(category==="__add__"||!category) category=catsFor(selectedType)[0];
     isSubmitting=true; const btn=$("submitBtn"); btn.disabled=true;
-    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(fbUser?fbUser.name:null) };
-    colorFor(category); entries.push(entry);
-    const r=Store.saveEntries(entries); handleSaveResult(r);
+    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(user?user.name:null) };
+    colorFor(category); entries.unshift(entry);
+    let r="ok";
+    if(CLOUD){ cloudInsert(entry); } else { r=Store.saveEntries(entries); handleSaveResult(r); }
     resetForm(); render();
-    if(r==="ok"||r==="stripped"){ toast(r==="stripped"?"บันทึกแล้ว (พื้นที่รูปเต็ม จึงไม่เก็บสลิป)":"บันทึกรายการเรียบร้อย","success"); checkStorageHealth(); }
+    if(r==="ok"||r==="stripped"){ toast(r==="stripped"?"บันทึกแล้ว (พื้นที่รูปเต็ม จึงไม่เก็บสลิป)":"บันทึกรายการเรียบร้อย","success"); if(!CLOUD) checkStorageHealth(); }
     setTimeout(()=>{ isSubmitting=false; btn.disabled=false; },350);
   });
   function handleSaveResult(r){ if(r==="fail"||r==="disabled"){ $("storageNotice").innerHTML="<span>⚠</span> โหมดชั่วคราว: รายการแสดงได้ แต่จะหายเมื่อปิดหน้า — เปิดผ่าน Safari/Chrome หรืออัปขึ้นโฮสติ้ง"; toast("เบราว์เซอร์ไม่อนุญาตให้เก็บข้อมูลถาวร","error"); } }
@@ -181,7 +191,8 @@
     if(!amount||isNaN(amount)||amount<=0){ $("editAmount").classList.add("invalid"); $("editAmountError").textContent="กรุณากรอกจำนวนเงินมากกว่า 0"; return; }
     let category=$("editCategory").value; if(category==="__add__"||!category) category=catsFor(editType)[0]; colorFor(category);
     entries[idx]={...entries[idx], type:editType, amount, category, note:$("editNote").value.trim(), date:$("editDate").value||todayKey(), time:$("editTime").value||"00:00", receipt:editReceipt, updatedAt:new Date().toISOString(), editedBy:currentEditorName()};
-    Store.saveEntries(entries); closeModal("editOverlay"); render(); toast("แก้ไขรายการแล้ว","success");
+    if(CLOUD){ cloudUpdate(entries[idx]); } else { Store.saveEntries(entries); }
+    closeModal("editOverlay"); render(); toast("แก้ไขรายการแล้ว","success");
   };
   $("editClose").onclick=$("editCancel").onclick=()=>closeModal("editOverlay");
 
@@ -189,7 +200,7 @@
   let pendingDelete=null;
   function askDelete(id){ const e=entries.find(x=>x.id===id); if(!e) return; pendingDelete={mode:"one",id}; $("confirmTitle").textContent="ลบรายการนี้?"; $("confirmText").innerHTML=`${escapeHtml(e.note||e.category)} · <strong>${fmt(e.amount)}</strong><br>การลบไม่สามารถย้อนกลับได้`; $("confirmOk").textContent="ลบรายการ"; showModal("confirmOverlay"); }
   $("clearTodayBtn").onclick=()=>{ const n=entries.filter(e=>e.date===todayKey()).length; if(!n) return toast("วันนี้ยังไม่มีรายการ"); pendingDelete={mode:"today"}; $("confirmTitle").textContent="ลบรายการวันนี้ทั้งหมด?"; $("confirmText").innerHTML=`มีทั้งหมด <strong>${n}</strong> รายการในวันนี้<br>ประวัติ/ยอดสะสมวันอื่นจะไม่ถูกลบ`; $("confirmOk").textContent="ลบทั้งหมด"; showModal("confirmOverlay"); };
-  $("confirmOk").onclick=()=>{ if(!pendingDelete) return; if(pendingDelete.mode==="one"){ entries=entries.filter(e=>e.id!==pendingDelete.id); Store.saveEntries(entries); render(); toast("ลบรายการแล้ว","success"); } else { entries=entries.filter(e=>e.date!==todayKey()); Store.saveEntries(entries); render(); toast("ลบรายการวันนี้แล้ว","success"); } pendingDelete=null; closeModal("confirmOverlay"); };
+  $("confirmOk").onclick=()=>{ if(!pendingDelete) return; if(pendingDelete.mode==="one"){ const did=pendingDelete.id; entries=entries.filter(e=>e.id!==did); if(CLOUD){ cloudDelete(did); } else { Store.saveEntries(entries); } render(); toast("ลบรายการแล้ว","success"); } else { entries=entries.filter(e=>e.date!==todayKey()); if(CLOUD){ cloudDeleteToday(); } else { Store.saveEntries(entries); } render(); toast("ลบรายการวันนี้แล้ว","success"); } pendingDelete=null; closeModal("confirmOverlay"); };
   $("confirmCancel").onclick=()=>{ pendingDelete=null; closeModal("confirmOverlay"); };
 
   /* ===== EXPORT ===== */
@@ -221,51 +232,74 @@
   });
   $("soonOk").onclick=()=>closeModal("soonOverlay");
 
-  /* ===== FACEBOOK LOGIN + EDITOR IDENTITY ===== */
-  // ชื่อผู้แก้ไข: ใช้ชื่อจาก Facebook ถ้าล็อกอิน ไม่งั้นถามครั้งแรกแล้วจำไว้ในเครื่อง
+  /* ===== AUTH + EDITOR IDENTITY ===== */
+  // ชื่อผู้แก้ไข: ใช้ชื่อจากบัญชี (Facebook) ถ้าล็อกอิน ไม่งั้นถามครั้งแรกแล้วจำไว้ในเครื่อง (โหมดในเครื่อง)
   function currentEditorName(){
-    if(fbUser) return fbUser.name;
+    if(user) return user.name;
     let n=localStorage.getItem(USERNAME_KEY);
     if(!n){ n=(prompt("ระบุชื่อของคุณ (ใช้บันทึกว่าใครเป็นคนแก้ไข)","")||"").trim(); if(!n) n="ไม่ระบุชื่อ"; try{ localStorage.setItem(USERNAME_KEY,n); }catch{} }
     return n;
   }
   function renderUser(){
     const el=$("userArea");
-    if(fbUser){
+    if(user){
       el.innerHTML=`<div class="flex items-center gap-2.5">
-        <img src="${escapeHtml(fbUser.picture||"")}" referrerpolicy="no-referrer" class="w-10 h-10 rounded-2xl object-cover bg-[#20273a]" alt="" />
-        <div class="leading-tight"><div class="text-sm font-extrabold max-w-[8rem] truncate">${escapeHtml(fbUser.name)}</div><button id="fbLogout" class="text-[.7rem] text-muted hover:text-expense">ออกจากระบบ</button></div></div>`;
-      $("fbLogout").onclick=fbLogout;
+        <img src="${escapeHtml(user.picture||"")}" referrerpolicy="no-referrer" class="w-10 h-10 rounded-2xl object-cover bg-[#20273a]" alt="" />
+        <div class="leading-tight"><div class="text-sm font-extrabold max-w-[8rem] truncate">${escapeHtml(user.name)}</div><button id="authLogout" class="text-[.7rem] text-muted hover:text-expense">ออกจากระบบ</button></div></div>`;
+      $("authLogout").onclick=logout;
     } else {
-      el.innerHTML=`<button id="fbLoginBtn" class="flex items-center gap-2 h-11 px-4 rounded-2xl bg-[#1877F2] text-white font-extrabold text-[.82rem] shadow-soft transition hover:brightness-95"><span class="text-base leading-none font-black">f</span> เข้าสู่ระบบด้วย Facebook</button>`;
-      $("fbLoginBtn").onclick=fbLogin;
+      el.innerHTML=`<button id="authLoginBtn" class="flex items-center gap-2 h-11 px-4 rounded-2xl bg-[#1877F2] text-white font-extrabold text-[.82rem] shadow-soft transition hover:brightness-95"><span class="text-base leading-none font-black">f</span> เข้าสู่ระบบด้วย Facebook</button>`;
+      $("authLoginBtn").onclick=login;
     }
   }
-  function fetchFbProfile(){
-    if(!window.FB) return;
-    FB.api("/me",{fields:"name,picture.width(100).height(100)"},u=>{
-      if(u&&u.name){ fbUser={ name:u.name, id:u.id, picture:(u.picture&&u.picture.data&&u.picture.data.url)||"" }; }
-      renderUser();
-    });
+  function renderGate(){ const g=$("authGate"); if(g){ g.hidden=!(CLOUD && !user); const b=$("gateLogin"); if(b) b.onclick=login; } }
+  function setUserFromSession(session){
+    const u=session&&session.user;
+    if(u){ const m=u.user_metadata||{}; user={ name:m.full_name||m.name||u.email||"ผู้ใช้", picture:m.avatar_url||m.picture||"", id:u.id }; }
+    else user=null;
   }
-  function fbLogin(){
-    if(!FB_APP_ID){ toast("ยังไม่ได้ตั้งค่า Facebook — ใส่ App ID ใน app.js ก่อนครับ","error"); return; }
-    if(!window.FB){ toast("Facebook SDK ยังไม่โหลด ลองรีเฟรช","error"); return; }
-    FB.login(r=>{ if(r.status==="connected") fetchFbProfile(); }, { scope:"public_profile" });
+  function login(){
+    if(CLOUD){ sb.auth.signInWithOAuth({ provider:"facebook", options:{ redirectTo: location.origin } }); }
+    else { const n=(prompt("ตั้งชื่อผู้ใช้ (โหมดในเครื่อง)","")||"").trim(); if(n){ user={ name:n, picture:"", id:null }; try{ localStorage.setItem(USERNAME_KEY,n); }catch{} renderUser(); } }
   }
-  function fbLogout(){ try{ if(window.FB) FB.logout(()=>{}); }catch{} fbUser=null; renderUser(); toast("ออกจากระบบ Facebook แล้ว"); }
-  function initFacebook(){
-    if(!FB_APP_ID){ renderUser(); return; }
-    window.fbAsyncInit=function(){
-      FB.init({ appId:FB_APP_ID, cookie:true, xfbml:false, version:"v21.0" });
-      FB.getLoginStatus(r=>{ if(r.status==="connected") fetchFbProfile(); else renderUser(); });
-    };
-    (function(d,s,id){ if(d.getElementById(id)) return; const js=d.createElement(s); js.id=id; js.src="https://connect.facebook.net/th_TH/sdk.js"; const f=d.getElementsByTagName(s)[0]; f.parentNode.insertBefore(js,f); })(document,"script","facebook-jssdk");
+  function logout(){ if(CLOUD && sb){ sb.auth.signOut(); } user=null; renderUser(); renderGate(); toast("ออกจากระบบแล้ว"); }
+
+  /* ===== CLOUD DATA (Supabase) ===== */
+  function rowToEntry(r){ return { id:r.id, type:r.type, amount:Number(r.amount), category:r.category, note:r.note||"", date:r.date, time:r.time||"00:00", receipt:r.receipt||"", createdBy:r.created_by||null, editedBy:r.edited_by||null, createdAt:r.created_at, updatedAt:r.edited_at }; }
+  function entryToRow(e){ return { id:e.id, type:e.type, amount:e.amount, category:e.category, note:e.note||"", date:e.date, time:e.time||"00:00", receipt:e.receipt||"", created_by:e.createdBy||null, edited_by:e.editedBy||null, edited_at:e.editedBy?new Date().toISOString():null }; }
+  async function cloudLoad(){
+    if(!CLOUD||!user) return;
+    const { data, error }=await sb.from("transactions").select("*").order("created_at",{ascending:false});
+    if(error){ toast("โหลดข้อมูลไม่สำเร็จ: "+error.message,"error"); return; }
+    entries=(data||[]).map(rowToEntry); render();
+    if(!realtimeOn){ subscribeRealtime(); realtimeOn=true; }
+  }
+  function subscribeRealtime(){
+    try{ sb.channel("tx").on("postgres_changes",{event:"*",schema:"public",table:"transactions"},()=>cloudLoad()).subscribe(); }catch(e){}
+  }
+  async function cloudInsert(e){ const { error }=await sb.from("transactions").insert(entryToRow(e)); if(error) toast("บันทึกขึ้นคลาวด์ไม่สำเร็จ: "+error.message,"error"); }
+  async function cloudUpdate(e){ const { error }=await sb.from("transactions").update(entryToRow(e)).eq("id",e.id); if(error) toast("อัปเดตไม่สำเร็จ: "+error.message,"error"); }
+  async function cloudDelete(id){ const { error }=await sb.from("transactions").delete().eq("id",id); if(error) toast("ลบไม่สำเร็จ: "+error.message,"error"); }
+  async function cloudDeleteToday(){ const { error }=await sb.from("transactions").delete().eq("date",todayKey()); if(error) toast("ลบไม่สำเร็จ: "+error.message,"error"); }
+
+  async function initAuth(){
+    if(CLOUD){
+      entries=[]; // โหมดคลาวด์: เริ่มจากว่าง แล้วโหลดจากเซิร์ฟเวอร์หลังล็อกอิน
+      sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+      const { data:{ session } }=await sb.auth.getSession();
+      setUserFromSession(session);
+      sb.auth.onAuthStateChange((_e,sess)=>{ setUserFromSession(sess); renderUser(); renderGate(); if(user) cloudLoad(); });
+      renderUser(); renderGate(); render();
+      if(user) cloudLoad();
+    } else {
+      const n=localStorage.getItem(USERNAME_KEY); if(n) user={ name:n, picture:"", id:null };
+      renderUser(); renderGate();
+    }
   }
 
   /* ===== INIT ===== */
-  if(!Store.enabled) handleSaveResult("disabled");
-  initFacebook();
+  if(!Store.enabled && !CLOUD) handleSaveResult("disabled");
+  initAuth();
   entries.forEach(e=>{ if(e.type==="expense") colorFor(e.category); });
   setNow(); populateSelect($("category"),selectedType); render();
   let lastDay=todayKey();
