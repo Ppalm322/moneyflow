@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1424" />
+  <title>MoneyFlow — Mobile</title>
+  <link rel="stylesheet" href="../shared/base.css" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body data-view="dashboard">
+  <header class="m-top">
+    <div><div class="eyebrow" id="viewKicker">แดชบอร์ดการเงิน</div><h1 id="viewTitle">สวัสดีครับ 👋</h1></div>
+    <div class="date-pill"><span class="calendar-dot"></span><span id="todayLabel"></span></div>
+  </header>
+
+  <main class="m-main">
+    <!-- DASHBOARD -->
+    <section class="view" data-view="dashboard">
+      <div class="summary-grid" id="summaryGrid"></div>
+      <article class="panel chart-panel">
+        <div class="panel-head">
+          <div><div class="panel-kicker">EXPENSE BREAKDOWN</div><h2>สัดส่วนค่าใช้จ่าย</h2></div>
+          <div class="tabs" id="rangeTabs"><button class="tab active" data-range="today">วันนี้</button><button class="tab" data-range="all">ทั้งหมด</button></div>
+        </div>
+        <div class="chart-area">
+          <div class="donut-wrap"><div class="donut-shadow"></div><svg class="donut" id="donut" viewBox="0 0 42 42"></svg>
+            <div class="donut-center"><span id="donutCaption">ค่าใช้จ่ายวันนี้</span><strong id="donutTotal">฿0</strong><small>รวมทั้งหมด</small></div></div>
+          <div class="legend" id="legend"></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- TRANSACTIONS -->
+    <section class="view" data-view="transactions" hidden>
+      <article class="panel transactions-panel">
+        <div class="panel-head transactions-head">
+          <div><div class="panel-kicker">RECENT ACTIVITY</div><h2>รายการล่าสุด</h2></div>
+          <div class="actions"><button class="ghost" id="exportBtn">⇩ CSV</button><button class="ghost danger" id="clearTodayBtn">ลบวันนี้</button></div>
+        </div>
+        <div class="tx-toolbar">
+          <div class="search-box"><span class="search-icon">⌕</span><input id="searchInput" type="search" autocomplete="off" placeholder="ค้นหา..." /></div>
+          <div class="filter-chips" id="filterChips">
+            <button class="chip active" data-filter="all">ทั้งหมด</button><button class="chip" data-filter="today">วันนี้</button><button class="chip" data-filter="7d">7 วัน</button><button class="chip" data-filter="month">เดือนนี้</button><button class="chip" data-filter="income">รายรับ</button><button class="chip" data-filter="expense">รายจ่าย</button>
+          </div>
+        </div>
+        <div class="transactions" id="transactionsList"></div>
+      </article>
+    </section>
+
+    <!-- ADD -->
+    <section class="view" data-view="add" hidden>
+      <article class="panel form-panel">
+        <div class="panel-head compact"><div><div class="panel-kicker">NEW TRANSACTION</div><h2>เพิ่มรายการ</h2></div></div>
+        <form data-addform novalidate><div class="form-grid" data-formgrid></div></form>
+        <div class="notice"><span>ⓘ</span> ข้อมูลเก็บในเครื่องนี้ · ยอดรายวันเริ่มนับใหม่เมื่อเปลี่ยนวัน</div>
+      </article>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="bnav-item active" data-view="dashboard"><span class="bnav-icon">◧</span><span>ภาพรวม</span></button>
+    <button class="bnav-item" data-view="transactions"><span class="bnav-icon">≡</span><span>รายการ</span></button>
+    <button class="bnav-fab" data-view="add" aria-label="เพิ่มรายการ">＋</button>
+    <button class="bnav-item" data-soon="รายงาน"><span class="bnav-icon">◔</span><span>รายงาน</span></button>
+    <button class="bnav-item" data-soon="ตั้งค่า"><span class="bnav-icon">⚙</span><span>ตั้งค่า</span></button>
+  </nav>
+
+  <script src="../shared/core.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

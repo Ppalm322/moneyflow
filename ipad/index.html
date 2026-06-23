@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1424" />
+  <title>MoneyFlow — iPad</title>
+  <link rel="stylesheet" href="../shared/base.css" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="pad-shell">
+    <!-- ===== TOP BAR ===== -->
+    <header class="pad-top">
+      <a class="brand" href="../index.html"><span class="logo-mark">M</span><span><strong>MoneyFlow</strong><small>iPadOS</small></span></a>
+      <div class="seg" id="seg">
+        <button class="seg-btn active" data-pane="overview">ภาพรวม</button>
+        <button class="seg-btn" data-pane="transactions">รายการเงิน</button>
+      </div>
+      <div class="pad-top-right">
+        <div class="date-pill"><span class="calendar-dot"></span><span id="todayLabel"></span></div>
+        <div class="avatar">PP</div>
+      </div>
+    </header>
+
+    <!-- ===== SPLIT VIEW ===== -->
+    <div class="split">
+      <!-- MASTER -->
+      <main class="master">
+        <!-- OVERVIEW pane -->
+        <section class="pane" data-pane="overview">
+          <section class="summary-grid" id="summaryGrid"></section>
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div><div class="panel-kicker">EXPENSE BREAKDOWN</div><h2>สัดส่วนค่าใช้จ่าย</h2></div>
+              <div class="tabs" id="rangeTabs"><button class="tab active" data-range="today">วันนี้</button><button class="tab" data-range="all">ทั้งหมด</button></div>
+            </div>
+            <div class="chart-area">
+              <div class="donut-wrap"><div class="donut-shadow"></div><svg class="donut" id="donut" viewBox="0 0 42 42"></svg>
+                <div class="donut-center"><span id="donutCaption">ค่าใช้จ่ายวันนี้</span><strong id="donutTotal">฿0</strong><small>รวมทั้งหมด</small></div></div>
+              <div class="legend" id="legend"></div>
+            </div>
+          </article>
+        </section>
+
+        <!-- TRANSACTIONS pane -->
+        <section class="pane" data-pane="transactions" hidden>
+          <article class="panel transactions-panel">
+            <div class="panel-head transactions-head">
+              <div><div class="panel-kicker">RECENT ACTIVITY</div><h2>รายการล่าสุด</h2></div>
+              <div class="actions"><button class="ghost" id="exportBtn">⇩ CSV</button><button class="ghost danger" id="clearTodayBtn">ลบรายการวันนี้</button></div>
+            </div>
+            <div class="tx-toolbar">
+              <div class="search-box"><span class="search-icon">⌕</span><input id="searchInput" type="search" autocomplete="off" placeholder="ค้นหา..." /></div>
+              <div class="filter-chips" id="filterChips">
+                <button class="chip active" data-filter="all">ทั้งหมด</button><button class="chip" data-filter="today">วันนี้</button><button class="chip" data-filter="7d">7 วัน</button><button class="chip" data-filter="month">เดือนนี้</button><button class="chip" data-filter="income">รายรับ</button><button class="chip" data-filter="expense">รายจ่าย</button>
+              </div>
+            </div>
+            <div class="transactions" id="transactionsList"></div>
+          </article>
+        </section>
+      </main>
+
+      <!-- DETAIL (always-visible add pane — classic iPad split) -->
+      <aside class="detail">
+        <div class="panel form-panel">
+          <div class="panel-head compact"><div><div class="panel-kicker">NEW TRANSACTION</div><h2>เพิ่มรายการ</h2><p>บันทึกได้เลยจากแผงด้านขวา</p></div></div>
+          <form data-addform novalidate><div class="form-grid" data-formgrid></div></form>
+          <div class="notice"><span>ⓘ</span> ข้อมูลเก็บในอุปกรณ์นี้ · ยอดรายวันเริ่มนับใหม่เมื่อเปลี่ยนวัน</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="../shared/core.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

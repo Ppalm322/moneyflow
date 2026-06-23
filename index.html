@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#0f1326" />
+<title>MoneyFlow — เลือกแพลตฟอร์ม</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai",Tahoma,sans-serif;
+    background:radial-gradient(circle at 80% -5%,rgba(99,91,255,.16),transparent 38%),radial-gradient(circle at 8% 12%,rgba(32,183,165,.10),transparent 32%),linear-gradient(180deg,#11152a 0,#161a30 60%,#0f1326 100%);
+    color:#e8ebf5;padding:64px 24px 72px;display:flex;flex-direction:column;align-items:center}
+  .eyebrow{color:#9d8bff;font-size:.78rem;font-weight:900;letter-spacing:.16em}
+  h1{margin:12px 0 10px;font-size:2.2rem;letter-spacing:-.03em;text-align:center}
+  .lede{color:#9aa1bd;font-size:.96rem;max-width:560px;text-align:center;line-height:1.6;margin-bottom:46px}
+  .lede code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-size:.85em}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;max-width:960px;width:100%}
+  .card{display:flex;flex-direction:column;gap:14px;padding:26px;border-radius:22px;text-decoration:none;color:inherit;
+    background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);transition:.2s ease}
+  .card:hover{transform:translateY(-4px);background:rgba(255,255,255,.07);border-color:rgba(157,139,255,.4);box-shadow:0 30px 60px rgba(0,0,0,.4)}
+  .ico{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-size:1.5rem;background:linear-gradient(135deg,rgba(99,91,255,.28),rgba(139,92,246,.18));border:1px solid rgba(255,255,255,.08)}
+  .card h2{font-size:1.15rem;letter-spacing:-.02em}
+  .card p{color:#9aa1bd;font-size:.83rem;line-height:1.55}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+  .tags span{font-size:.68rem;font-weight:800;color:#c4cae0;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+  .go{margin-top:auto;color:#b9aaff;font-size:.84rem;font-weight:800}
+  .foot{margin-top:44px;color:#7e85a3;font-size:.8rem;text-align:center;max-width:680px;line-height:1.7}
+  .foot b{color:#b9c0db}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}h1{font-size:1.8rem}}
+</style>
+</head>
+<body>
+  <div class="eyebrow">CROSS-PLATFORM · 3 BUILDS</div>
+  <h1>MoneyFlow</h1>
+  <p class="lede">บัญชีรายรับรายจ่าย — สร้างแยกเป็น 3 เพจจริงตามอุปกรณ์ ใช้ <b>data logic ชุดเดียวกัน</b> (<code>shared/core.js</code>) ข้อมูลทุกเพจ sync กันผ่าน localStorage ของเครื่องเดียวกัน</p>
+
+  <div class="grid">
+    <a class="card" href="./web/index.html">
+      <div class="ico">💻</div>
+      <h2>เว็บ / เดสก์ท็อป</h2>
+      <p>ไซด์บาร์เต็ม + กริด 4 คอลัมน์ กราฟกับฟอร์มเรียงข้างกัน เหมาะกับจอกว้าง</p>
+      <div class="tags"><span>Sidebar</span><span>4-col</span><span>Scroll-nav</span></div>
+      <span class="go">เปิดเว็บ →</span>
+    </a>
+    <a class="card" href="./ipad/index.html">
+      <div class="ico">📋</div>
+      <h2>iPad / แท็บเล็ต</h2>
+      <p>Split-view: รายการ/กราฟด้านซ้าย ฟอร์มเพิ่มลอยด้านขวาตลอด สลับด้วย segmented control</p>
+      <div class="tags"><span>Split-view</span><span>Segmented</span><span>Sticky form</span></div>
+      <span class="go">เปิด iPad →</span>
+    </a>
+    <a class="card" href="./mobile/index.html">
+      <div class="ico">📱</div>
+      <h2>มือถือ</h2>
+      <p>จอเดียวสลับมุมมอง + Bottom Nav พร้อมปุ่ม ＋ ลอย รองรับ safe-area iOS/Android</p>
+      <div class="tags"><span>Bottom Nav</span><span>FAB</span><span>Single-view</span></div>
+      <span class="go">เปิดมือถือ →</span>
+    </a>
+  </div>
+
+  <p class="foot">ทั้ง 3 เพจเป็นแอปทำงานจริง (เพิ่ม / แก้ไข / ลบ / ค้นหา / กรอง / ส่งออก CSV / แนบสลิป) — แยกโฟลเดอร์ <b>web · ipad · mobile</b> แต่แชร์ <b>shared/core.js</b> + <b>shared/base.css</b> ร่วมกัน เปิดผ่าน HTTP server เพื่อให้โหลดไฟล์ shared ได้</p>
+</body>
+</html>

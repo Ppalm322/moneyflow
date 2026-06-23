@@ -1,0 +1,36 @@
+/* ===== MoneyFlow Web (desktop) — layout shell only ===== */
+.app-shell{min-height:100vh;display:grid;grid-template-columns:248px minmax(0,1fr)}
+
+.sidebar{position:sticky;top:0;height:100vh;padding:30px 22px;color:#fff;display:flex;flex-direction:column;z-index:5;
+  background:radial-gradient(circle at 15% 4%,rgba(139,92,246,.32),transparent 28%),linear-gradient(165deg,#18162a 0,#111827 62%,#0f172a 100%);
+  box-shadow:18px 0 60px rgba(17,24,39,.12)}
+.logo{display:flex;align-items:center;gap:12px;padding:0 8px 34px;text-decoration:none;color:inherit}
+.logo-mark{width:43px;height:43px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:900;font-size:1.15rem;background:linear-gradient(135deg,#786dff,#9d6cff);box-shadow:0 10px 24px rgba(99,91,255,.35)}
+.logo strong{display:block;font-size:1.03rem}.logo small{display:block;color:#9ca3b6;margin-top:3px;font-size:.72rem}
+.nav{display:flex;flex-direction:column;gap:8px}
+.nav-item{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:0 13px;border:0;border-radius:14px;background:transparent;color:#aeb7c7;text-align:left;font-weight:700;cursor:pointer;transition:.2s ease}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:linear-gradient(135deg,rgba(99,91,255,.30),rgba(139,92,246,.18));color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.nav-icon{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:rgba(255,255,255,.08);font-size:1rem;flex:none}
+.nav-item.active .nav-icon{background:#7367ff}
+.soon-tag{margin-left:auto;font-size:.58rem;font-weight:800;letter-spacing:.04em;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.12);color:#cdd3e0}
+.sidebar-card{margin-top:auto;padding:15px;display:flex;gap:11px;align-items:center;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)}
+.sidebar-card-icon{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:rgba(22,160,106,.18);color:#77e4b4;font-weight:900;flex:none}
+.sidebar-card strong{display:block;font-size:.82rem}.sidebar-card small{display:block;color:#98a2b3;font-size:.7rem;margin-top:3px}
+
+.main{min-width:0;width:100%;max-width:1480px;padding:32px 36px 46px;margin:0 auto}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:22px;margin-bottom:26px}
+.topbar h1{margin:5px 0 2px;font-size:clamp(1.7rem,3vw,2.35rem);letter-spacing:-.045em}
+.topbar p{margin:0;color:var(--muted);font-size:.92rem}
+.topbar-actions{display:flex;align-items:center;gap:12px}
+.date-pill{display:flex;align-items:center;gap:10px;min-height:45px;padding:0 15px;border-radius:14px;background:rgba(255,255,255,.86);border:1px solid var(--line);color:#4b5563;font-size:.82rem;font-weight:750;box-shadow:var(--shadow-soft)}
+.calendar-dot{width:9px;height:9px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 5px var(--primary-soft)}
+.avatar{width:45px;height:45px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,#20273a,#101827);color:#fff;font-weight:850;font-size:.8rem;box-shadow:0 10px 25px rgba(17,24,39,.17)}
+
+.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-bottom:20px}
+.content-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(340px,.75fr);gap:20px}
+.chart-area{display:grid;grid-template-columns:minmax(245px,.85fr) minmax(230px,1fr);gap:28px;align-items:center;min-height:320px}
+.transactions-panel{grid-column:1/-1}
+.transactions-head{align-items:center}
+
+@media(max-width:1100px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content-grid{grid-template-columns:1fr}.transactions-panel{grid-column:auto}.chart-area{grid-template-columns:1fr}}
