@@ -1,4 +1,0 @@
-# Static site — no build step, serve repo root as-is.
-[build]
-  publish = "."
-  command = ""

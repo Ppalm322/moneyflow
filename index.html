@@ -1,63 +1,280 @@
 <!doctype html>
 <html lang="th">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="theme-color" content="#0f1326" />
-<title>MoneyFlow — เลือกแพลตฟอร์ม</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai",Tahoma,sans-serif;
-    background:radial-gradient(circle at 80% -5%,rgba(99,91,255,.16),transparent 38%),radial-gradient(circle at 8% 12%,rgba(32,183,165,.10),transparent 32%),linear-gradient(180deg,#11152a 0,#161a30 60%,#0f1326 100%);
-    color:#e8ebf5;padding:64px 24px 72px;display:flex;flex-direction:column;align-items:center}
-  .eyebrow{color:#9d8bff;font-size:.78rem;font-weight:900;letter-spacing:.16em}
-  h1{margin:12px 0 10px;font-size:2.2rem;letter-spacing:-.03em;text-align:center}
-  .lede{color:#9aa1bd;font-size:.96rem;max-width:560px;text-align:center;line-height:1.6;margin-bottom:46px}
-  .lede code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-size:.85em}
-  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;max-width:960px;width:100%}
-  .card{display:flex;flex-direction:column;gap:14px;padding:26px;border-radius:22px;text-decoration:none;color:inherit;
-    background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);transition:.2s ease}
-  .card:hover{transform:translateY(-4px);background:rgba(255,255,255,.07);border-color:rgba(157,139,255,.4);box-shadow:0 30px 60px rgba(0,0,0,.4)}
-  .ico{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-size:1.5rem;background:linear-gradient(135deg,rgba(99,91,255,.28),rgba(139,92,246,.18));border:1px solid rgba(255,255,255,.08)}
-  .card h2{font-size:1.15rem;letter-spacing:-.02em}
-  .card p{color:#9aa1bd;font-size:.83rem;line-height:1.55}
-  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
-  .tags span{font-size:.68rem;font-weight:800;color:#c4cae0;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
-  .go{margin-top:auto;color:#b9aaff;font-size:.84rem;font-weight:800}
-  .foot{margin-top:44px;color:#7e85a3;font-size:.8rem;text-align:center;max-width:680px;line-height:1.7}
-  .foot b{color:#b9c0db}
-  @media(max-width:720px){.grid{grid-template-columns:1fr}h1{font-size:1.8rem}}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0f1424" />
+  <title>MoneyFlow — บัญชีรายรับรายจ่าย</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: {
+      colors: { primary:'#635bff', primaryd:'#8667ff', primarysoft:'#f0efff',
+        income:'#16a06a', incomesoft:'#eaf8f1', expense:'#ef5b62', expensesoft:'#fff0f1',
+        info:'#3b82f6', infosoft:'#eaf1ff', navy:'#0f1424', ink:'#111827', muted:'#7b8497', line:'#e7ebf2' },
+      fontFamily: { sans:['"Noto Sans Thai"','-apple-system','BlinkMacSystemFont','"Segoe UI"','sans-serif'] },
+      boxShadow: { card:'0 18px 50px rgba(30,41,59,.08)', soft:'0 8px 28px rgba(30,41,59,.06)' }
+    } } }
+  </script>
+  <style type="text/tailwindcss">
+    @layer components {
+      .panel{ @apply bg-white/95 border border-line/90 rounded-3xl shadow-card p-6; }
+      .kicker{ @apply text-primary text-[.71rem] font-black tracking-[.12em]; }
+      .h2{ @apply mt-1 text-[1.23rem] font-extrabold tracking-tight; }
+      .nav-item{ @apply relative flex items-center gap-3 w-full min-h-[3rem] px-3.5 rounded-2xl text-[#aeb7c7] text-left font-bold cursor-pointer transition hover:bg-white/[.07] hover:text-white; }
+      .nav-item.active{ @apply text-white bg-gradient-to-br from-primary/30 to-primaryd/20 shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]; }
+      .nav-item .ic{ @apply w-7 h-7 rounded-[9px] grid place-items-center bg-white/[.08] text-base shrink-0; }
+      .nav-item.active .ic{ @apply bg-[#7367ff]; }
+      .tab{ @apply border-0 bg-transparent text-[#8a94a5] px-3 py-2 rounded-[9px] font-extrabold text-[.77rem] cursor-pointer; }
+      .tab.active{ @apply text-primary bg-white shadow-[0_4px_14px_rgba(30,41,59,.08)]; }
+      .ghost{ @apply min-h-[2.5rem] px-3.5 rounded-xl border border-line bg-white text-[#596273] text-[.76rem] font-extrabold cursor-pointer transition hover:bg-[#f7f8fb]; }
+      .chip{ @apply min-h-[2.375rem] px-3.5 rounded-full border border-line bg-white text-[#6b7280] text-[.77rem] font-extrabold cursor-pointer transition hover:bg-[#f7f8fb]; }
+      .chip.active{ @apply bg-navy text-white border-navy; }
+      .field{ @apply flex flex-col gap-1.5 min-w-0; }
+      .field.full{ @apply col-span-2; }
+      .lbl{ @apply text-xs font-extrabold text-[#737d90]; }
+      .inp{ @apply w-full min-w-0 h-12 px-3.5 rounded-xl border border-line bg-[#fbfcfe] text-ink text-base outline-none transition focus:bg-white focus:border-[#a6a0ff] focus:ring-4 focus:ring-primary/10; }
+      .inp.invalid{ @apply border-expense ring-4 ring-expense/10; }
+      .type-btn{ @apply min-h-[2.75rem] rounded-[10px] bg-transparent text-[#8993a4] font-extrabold cursor-pointer transition; }
+      .type-btn.active[data-type="expense"]{ @apply bg-white text-expense shadow-[0_5px_15px_rgba(30,41,59,.08)]; }
+      .type-btn.active[data-type="income"]{ @apply bg-white text-income shadow-[0_5px_15px_rgba(30,41,59,.08)]; }
+      .primary{ @apply w-full h-[3.125rem] rounded-xl border-0 text-white font-black cursor-pointer transition bg-gradient-to-br from-primary to-primaryd shadow-[0_12px_24px_rgba(99,91,255,.26)] hover:-translate-y-px disabled:opacity-60 disabled:translate-y-0; }
+      .primary.slim{ @apply h-[2.875rem]; }
+      .primary.danger-btn{ @apply from-expense to-[#f0746f]; }
+      .txbtn{ @apply w-9 h-9 rounded-[10px] border-0 bg-[#f6f7fa] text-[#8a93a3] cursor-pointer transition text-[.82rem]; }
+    }
+  </style>
+  <style>
+    [hidden]{display:none !important}
+    body{background:radial-gradient(circle at 80% -10%,rgba(99,91,255,.12),transparent 32%),linear-gradient(180deg,#f8f9fd,#f4f6fb 55%,#f1f4f9)}
+    .sidebar-bg{background:radial-gradient(circle at 15% 4%,rgba(139,92,246,.32),transparent 28%),linear-gradient(165deg,#18162a,#111827 62%,#0f172a)}
+    .donut{transform:rotate(-90deg);overflow:visible}
+    .donut circle{fill:none;stroke-width:5;stroke-linecap:round}
+    .donut .track{stroke:#ebedf3}
+    .donut .seg{transition:stroke-dasharray .6s cubic-bezier(.4,0,.2,1),stroke-dashoffset .6s cubic-bezier(.4,0,.2,1)}
+    .receipt-input{display:none}
+    .legend-scroll::-webkit-scrollbar{width:6px}.legend-scroll::-webkit-scrollbar-thumb{background:#e2e6ef;border-radius:9px}
+    .toast{position:fixed;left:50%;bottom:1.6rem;z-index:200;transform:translate(-50%,18px);max-width:calc(100vw - 30px);padding:.75rem 1.15rem;border-radius:.75rem;background:#111827;color:#fff;box-shadow:0 16px 35px rgba(17,24,39,.22);opacity:0;pointer-events:none;transition:.22s;font-size:.84rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+    .toast.success{background:linear-gradient(135deg,#16a06a,#1bb377)}.toast.error{background:linear-gradient(135deg,#ef5b62,#f0746f)}
+    .modal-overlay{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;padding:1.1rem;background:rgba(15,20,36,.55);backdrop-filter:blur(4px)}
+    .modal{width:100%;max-width:30rem;max-height:calc(100vh - 2.25rem);overflow-y:auto;background:#fff;border-radius:1.4rem;box-shadow:0 30px 80px rgba(15,20,36,.4);animation:mfslide .25s cubic-bezier(.2,.7,.3,1)}
+    .modal.confirm{max-width:22.5rem;text-align:center;padding:1.75rem 1.5rem}
+    @keyframes mfslide{from{transform:translateY(16px);opacity:.3}to{transform:translateY(0);opacity:1}}
+    .lightbox{position:fixed;inset:0;z-index:180;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:rgba(8,11,20,.88)}
+  </style>
 </head>
-<body>
-  <div class="eyebrow">CROSS-PLATFORM · 3 BUILDS</div>
-  <h1>MoneyFlow</h1>
-  <p class="lede">บัญชีรายรับรายจ่าย — สร้างแยกเป็น 3 เพจจริงตามอุปกรณ์ ใช้ <b>data logic ชุดเดียวกัน</b> (<code>shared/core.js</code>) ข้อมูลทุกเพจ sync กันผ่าน localStorage ของเครื่องเดียวกัน</p>
+<body class="min-h-screen font-sans text-ink antialiased">
+  <div class="grid lg:grid-cols-[15.5rem_minmax(0,1fr)] min-h-screen">
 
-  <div class="grid">
-    <a class="card" href="./web/index.html">
-      <div class="ico">💻</div>
-      <h2>เว็บ / เดสก์ท็อป</h2>
-      <p>ไซด์บาร์เต็ม + กริด 4 คอลัมน์ กราฟกับฟอร์มเรียงข้างกัน เหมาะกับจอกว้าง</p>
-      <div class="tags"><span>Sidebar</span><span>4-col</span><span>Scroll-nav</span></div>
-      <span class="go">เปิดเว็บ →</span>
-    </a>
-    <a class="card" href="./ipad/index.html">
-      <div class="ico">📋</div>
-      <h2>iPad / แท็บเล็ต</h2>
-      <p>Split-view: รายการ/กราฟด้านซ้าย ฟอร์มเพิ่มลอยด้านขวาตลอด สลับด้วย segmented control</p>
-      <div class="tags"><span>Split-view</span><span>Segmented</span><span>Sticky form</span></div>
-      <span class="go">เปิด iPad →</span>
-    </a>
-    <a class="card" href="./mobile/index.html">
-      <div class="ico">📱</div>
-      <h2>มือถือ</h2>
-      <p>จอเดียวสลับมุมมอง + Bottom Nav พร้อมปุ่ม ＋ ลอย รองรับ safe-area iOS/Android</p>
-      <div class="tags"><span>Bottom Nav</span><span>FAB</span><span>Single-view</span></div>
-      <span class="go">เปิดมือถือ →</span>
-    </a>
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar-bg hidden lg:flex flex-col text-white sticky top-0 h-screen p-7 shadow-[18px_0_60px_rgba(17,24,39,.12)] z-10">
+      <div class="flex items-center gap-3 px-2 pb-9">
+        <div class="w-11 h-11 rounded-2xl grid place-items-center font-black text-lg bg-gradient-to-br from-[#786dff] to-[#9d6cff] shadow-[0_10px_24px_rgba(99,91,255,.35)]">M</div>
+        <div><strong class="block text-base">MoneyFlow</strong><small class="block text-[#9ca3b6] text-xs mt-0.5">Personal finance</small></div>
+      </div>
+      <nav class="flex flex-col gap-2" id="sideNav">
+        <button class="nav-item active" data-scroll="dashboard"><span class="ic">◧</span><span>ภาพรวม</span></button>
+        <button class="nav-item" data-scroll="chart"><span class="ic">◔</span><span>สัดส่วน</span></button>
+        <button class="nav-item" data-scroll="add"><span class="ic">＋</span><span>เพิ่มรายการ</span></button>
+        <button class="nav-item" data-scroll="transactions"><span class="ic">≡</span><span>รายการเงิน</span></button>
+        <button class="nav-item" data-soon="ตั้งค่า"><span class="ic">⚙</span><span>ตั้งค่า</span><span class="ml-auto text-[.58rem] font-extrabold tracking-wide px-1.5 py-0.5 rounded-full bg-white/10 text-[#cdd3e0]">เร็ว ๆ นี้</span></button>
+      </nav>
+      <div class="mt-auto p-4 flex gap-3 items-center rounded-2xl bg-white/[.07] border border-white/[.08]">
+        <span class="w-9 h-9 rounded-xl grid place-items-center bg-income/20 text-[#77e4b4] font-black shrink-0">✓</span>
+        <div><strong class="block text-[.82rem]">บันทึกอัตโนมัติ</strong><small class="block text-[#98a2b3] text-[.7rem] mt-0.5">ข้อมูลเก็บในอุปกรณ์นี้</small></div>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="min-w-0 w-full max-w-[1480px] mx-auto px-5 sm:px-9 pt-8 pb-12">
+      <header class="flex flex-wrap justify-between items-center gap-5 mb-7">
+        <div>
+          <div class="kicker">แดชบอร์ดการเงิน</div>
+          <h1 class="mt-1 text-3xl sm:text-[2.1rem] font-black tracking-tight">สวัสดีครับ 👋</h1>
+          <p class="text-muted text-[.92rem] mt-0.5">ติดตามรายรับ รายจ่าย และภาพรวมเงินของคุณ</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2.5 h-11 px-4 rounded-2xl bg-white/85 border border-line text-[#4b5563] text-[.82rem] font-semibold shadow-soft">
+            <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_0_5px_#f0efff]"></span><span id="todayLabel"></span>
+          </div>
+          <div class="w-11 h-11 rounded-2xl grid place-items-center bg-gradient-to-br from-[#20273a] to-[#101827] text-white font-extrabold text-sm shadow-[0_10px_25px_rgba(17,24,39,.17)]">PP</div>
+        </div>
+      </header>
+
+      <!-- summary cards -->
+      <section class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5" data-anchor="dashboard">
+        <article class="relative overflow-hidden p-5 rounded-3xl bg-white/95 border border-line/90 shadow-card">
+          <div class="flex justify-between items-center mb-4"><div class="w-10 h-10 rounded-2xl grid place-items-center font-black bg-incomesoft text-income">↙</div><span class="px-2.5 py-1.5 rounded-full bg-[#f5f7fa] text-[#8a94a5] text-[.68rem] font-extrabold">วันนี้</span></div>
+          <div class="text-muted text-[.83rem] font-semibold">รายรับวันนี้</div>
+          <div class="mt-1.5 text-2xl font-black tracking-tight text-income" id="incomeToday">฿0.00</div>
+          <div class="mt-4 pt-3 border-t border-[#eef1f5] flex items-center gap-2 text-[#8a94a5] text-[.72rem]"><span class="w-1.5 h-1.5 rounded-full bg-income"></span>เงินเข้าทั้งหมดของวันนี้</div>
+        </article>
+        <article class="relative overflow-hidden p-5 rounded-3xl bg-white/95 border border-line/90 shadow-card">
+          <div class="flex justify-between items-center mb-4"><div class="w-10 h-10 rounded-2xl grid place-items-center font-black bg-expensesoft text-expense">↗</div><span class="px-2.5 py-1.5 rounded-full bg-[#f5f7fa] text-[#8a94a5] text-[.68rem] font-extrabold">วันนี้</span></div>
+          <div class="text-muted text-[.83rem] font-semibold">รายจ่ายวันนี้</div>
+          <div class="mt-1.5 text-2xl font-black tracking-tight text-expense" id="expenseToday">฿0.00</div>
+          <div class="mt-4 pt-3 border-t border-[#eef1f5] flex items-center gap-2 text-[#8a94a5] text-[.72rem]"><span class="w-1.5 h-1.5 rounded-full bg-expense"></span>ค่าใช้จ่ายรวมของวันนี้</div>
+        </article>
+        <article class="relative overflow-hidden p-5 rounded-3xl bg-white/95 border border-line/90 shadow-card">
+          <div class="flex justify-between items-center mb-4"><div class="w-10 h-10 rounded-2xl grid place-items-center font-black bg-primarysoft text-primary">฿</div><span class="px-2.5 py-1.5 rounded-full bg-[#f5f7fa] text-[#8a94a5] text-[.68rem] font-extrabold">สะสม</span></div>
+          <div class="text-muted text-[.83rem] font-semibold">ยอดคงเหลือสะสม</div>
+          <div class="mt-1.5 text-2xl font-black tracking-tight text-primary" id="balanceAll">฿0.00</div>
+          <div class="mt-4 pt-3 border-t border-[#eef1f5] flex items-center gap-2 text-[#8a94a5] text-[.72rem]"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>รายรับลบรายจ่ายทั้งหมด</div>
+        </article>
+        <article class="relative overflow-hidden p-5 rounded-3xl bg-white/95 border border-line/90 shadow-card">
+          <div class="flex justify-between items-center mb-4"><div class="w-10 h-10 rounded-2xl grid place-items-center font-black bg-infosoft text-info">≡</div><span class="px-2.5 py-1.5 rounded-full bg-[#f5f7fa] text-[#8a94a5] text-[.68rem] font-extrabold">วันนี้</span></div>
+          <div class="text-muted text-[.83rem] font-semibold">จำนวนรายการวันนี้</div>
+          <div class="mt-1.5 text-2xl font-black tracking-tight text-info" id="todayCount">0</div>
+          <div class="mt-4 pt-3 border-t border-[#eef1f5] flex items-center gap-2 text-[#8a94a5] text-[.72rem]"><span class="w-1.5 h-1.5 rounded-full bg-info"></span>รายการที่บันทึกวันนี้</div>
+        </article>
+      </section>
+
+      <div class="grid lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,.75fr)] gap-5">
+        <!-- chart -->
+        <article class="panel" data-anchor="chart">
+          <div class="flex items-start justify-between gap-4 mb-5">
+            <div><div class="kicker">EXPENSE BREAKDOWN</div><h2 class="h2">สัดส่วนค่าใช้จ่าย</h2><p class="text-muted text-[.9rem]">ดูว่าเงินถูกใช้ไปกับหมวดไหนมากที่สุด</p></div>
+            <div class="flex p-1 rounded-xl bg-[#f2f4f8] border border-[#eceff4]" id="rangeTabs">
+              <button class="tab active" data-range="today">วันนี้</button><button class="tab" data-range="all">ทั้งหมด</button>
+            </div>
+          </div>
+          <div class="grid sm:grid-cols-[minmax(15rem,.85fr)_minmax(0,1fr)] gap-7 items-center min-h-[19rem]">
+            <div class="relative grid place-items-center min-h-[17rem]">
+              <div class="absolute w-[15.5rem] h-[15.5rem] rounded-full blur-2xl opacity-50" style="background:radial-gradient(circle,rgba(99,91,255,.16),transparent 67%)"></div>
+              <svg class="donut w-[min(15.5rem,68vw)] aspect-square" id="donut" viewBox="0 0 42 42"></svg>
+              <div class="absolute z-[2] text-center w-[48%] pointer-events-none">
+                <span class="block text-[#8a94a5] text-[.72rem]" id="donutCaption">ค่าใช้จ่ายวันนี้</span>
+                <strong class="block my-1 text-[1.3rem] tracking-tight" id="donutTotal">฿0</strong>
+                <small class="block text-[#a4adba] text-[.64rem]">รวมทั้งหมด</small>
+              </div>
+            </div>
+            <div class="flex flex-col gap-0.5 max-h-[18.75rem] overflow-y-auto legend-scroll" id="legend"></div>
+          </div>
+        </article>
+
+        <!-- add form -->
+        <aside class="panel" data-anchor="add">
+          <div class="mb-5"><div class="kicker">NEW TRANSACTION</div><h2 class="h2">เพิ่มรายการ</h2><p class="text-muted text-[.9rem]">บันทึกรายรับหรือรายจ่ายใหม่</p></div>
+          <form id="entryForm" novalidate>
+            <div class="grid grid-cols-2 gap-3.5">
+              <div class="field full">
+                <span class="lbl">ประเภทรายการ</span>
+                <div class="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-[#f3f5f8]">
+                  <button type="button" class="type-btn active" data-type="expense">↗ รายจ่าย</button>
+                  <button type="button" class="type-btn" data-type="income">↙ รายรับ</button>
+                </div>
+              </div>
+              <div class="field full">
+                <label class="lbl" for="amount">จำนวนเงิน</label>
+                <div class="relative"><span class="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-[#6d7585]">฿</span>
+                  <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" class="inp pl-9 text-lg font-extrabold" /></div>
+                <small class="text-expense text-[.72rem] font-bold empty:hidden" id="amountError"></small>
+              </div>
+              <div class="field"><label class="lbl" for="category">หมวดหมู่</label><select id="category" class="inp"></select></div>
+              <div class="field"><label class="lbl" for="note">รายละเอียด</label><input id="note" type="text" autocomplete="off" placeholder="เช่น ค่าน้ำมัน" class="inp" /></div>
+              <div class="field full" id="customCatRow" hidden>
+                <label class="lbl" for="customCat">ชื่อหมวดหมู่ใหม่</label>
+                <div class="grid grid-cols-[1fr_auto] gap-2"><input id="customCat" type="text" autocomplete="off" placeholder="พิมพ์ชื่อหมวดหมู่" maxlength="24" class="inp" /><button type="button" class="ghost h-12 px-4" id="customCatAdd">เพิ่ม</button></div>
+              </div>
+              <div class="field"><label class="lbl" for="entryDate">วันที่</label><input id="entryDate" type="date" class="inp" /></div>
+              <div class="field"><label class="lbl" for="entryTime">เวลา</label><input id="entryTime" type="time" class="inp" /></div>
+              <div class="field full">
+                <label for="receipt" class="flex items-center gap-3 min-h-[3.9rem] p-3 rounded-xl border border-dashed border-[#bbb7ff] bg-[#fafaff] cursor-pointer">
+                  <span class="w-9 h-9 rounded-xl grid place-items-center bg-primarysoft text-primary shrink-0">↑</span>
+                  <span><strong class="block text-[#5f6674] text-[.82rem]">แนบรูปสลิป</strong><small class="block text-[#9aa3b2] text-[.68rem] mt-0.5">PNG หรือ JPG · บีบอัดอัตโนมัติ</small></span>
+                </label>
+                <input id="receipt" type="file" accept="image/*" class="receipt-input" />
+                <div class="relative mt-2.5 inline-block" id="receiptBox" hidden>
+                  <img id="receiptPreview" class="block max-w-full max-h-[10.5rem] object-contain rounded-xl border border-line cursor-zoom-in" alt="ตัวอย่างสลิป" />
+                  <button type="button" class="absolute -top-2 -right-2 w-7 h-7 rounded-full border-0 bg-expense text-white text-xs font-black cursor-pointer shadow-[0_4px_12px_rgba(239,91,98,.4)]" id="receiptRemove" aria-label="ลบรูป">✕</button>
+                </div>
+              </div>
+              <div class="field full"><button class="primary" type="submit" id="submitBtn">＋ บันทึกรายการ</button></div>
+            </div>
+          </form>
+          <div class="flex items-start gap-2 mt-3.5 p-3 rounded-xl bg-[#f8f9fc] text-[#8a94a5] text-[.7rem] leading-relaxed" id="storageNotice"><span>ⓘ</span> ข้อมูลเก็บในเบราว์เซอร์ของอุปกรณ์นี้ และยอดรายวันจะเริ่มนับใหม่เมื่อเปลี่ยนวัน</div>
+        </aside>
+
+        <!-- transactions -->
+        <article class="panel lg:col-span-2" data-anchor="transactions">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+            <div><div class="kicker">RECENT ACTIVITY</div><h2 class="h2">รายการล่าสุด</h2><p class="text-muted text-[.9rem]">ตรวจสอบ ค้นหา และกรองรายการย้อนหลัง</p></div>
+            <div class="flex gap-2 flex-wrap"><button class="ghost" id="exportBtn">⇩ ส่งออก CSV</button><button class="ghost !text-expense" id="clearTodayBtn">ลบรายการวันนี้</button></div>
+          </div>
+          <div class="flex items-center gap-3 mb-2 flex-wrap">
+            <div class="relative flex-1 min-w-[12.5rem]"><span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9aa3b2]">⌕</span>
+              <input id="searchInput" type="search" autocomplete="off" placeholder="ค้นหารายละเอียดหรือหมวดหมู่..." class="inp h-[2.875rem] pl-9" /></div>
+            <div class="flex gap-1.5 flex-wrap" id="filterChips">
+              <button class="chip active" data-filter="all">ทั้งหมด</button><button class="chip" data-filter="today">วันนี้</button><button class="chip" data-filter="7d">7 วัน</button><button class="chip" data-filter="month">เดือนนี้</button><button class="chip" data-filter="income">รายรับ</button><button class="chip" data-filter="expense">รายจ่าย</button>
+            </div>
+          </div>
+          <div class="flex flex-col mt-1.5" id="transactionsList"></div>
+        </article>
+      </div>
+    </main>
   </div>
 
-  <p class="foot">ทั้ง 3 เพจเป็นแอปทำงานจริง (เพิ่ม / แก้ไข / ลบ / ค้นหา / กรอง / ส่งออก CSV / แนบสลิป) — แยกโฟลเดอร์ <b>web · ipad · mobile</b> แต่แชร์ <b>shared/core.js</b> + <b>shared/base.css</b> ร่วมกัน เปิดผ่าน HTTP server เพื่อให้โหลดไฟล์ shared ได้</p>
+  <!-- ===== EDIT MODAL ===== -->
+  <div class="modal-overlay" id="editOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="flex items-center justify-between p-5 border-b border-line"><h3 class="text-[1.1rem] font-extrabold tracking-tight">แก้ไขรายการ</h3><button class="w-9 h-9 rounded-xl border-0 bg-[#f4f5f8] text-[#6b7280] cursor-pointer" id="editClose" aria-label="ปิด">✕</button></div>
+      <div class="p-5">
+        <form id="editForm" novalidate>
+          <input type="hidden" id="editId" />
+          <div class="field full mb-3.5"><span class="lbl">ประเภทรายการ</span>
+            <div class="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-[#f3f5f8]"><button type="button" class="type-btn etype active" data-type="expense">↗ รายจ่าย</button><button type="button" class="type-btn etype" data-type="income">↙ รายรับ</button></div>
+          </div>
+          <div class="field full mb-3.5"><label class="lbl" for="editAmount">จำนวนเงิน</label>
+            <div class="relative"><span class="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-[#6d7585]">฿</span><input id="editAmount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" class="inp pl-9 text-lg font-extrabold" /></div>
+            <small class="text-expense text-[.72rem] font-bold empty:hidden" id="editAmountError"></small>
+          </div>
+          <div class="grid grid-cols-2 gap-3.5">
+            <div class="field"><label class="lbl" for="editCategory">หมวดหมู่</label><select id="editCategory" class="inp"></select></div>
+            <div class="field"><label class="lbl" for="editNote">รายละเอียด</label><input id="editNote" type="text" autocomplete="off" placeholder="รายละเอียด" class="inp" /></div>
+            <div class="field"><label class="lbl" for="editDate">วันที่</label><input id="editDate" type="date" class="inp" /></div>
+            <div class="field"><label class="lbl" for="editTime">เวลา</label><input id="editTime" type="time" class="inp" /></div>
+          </div>
+          <div class="field full mt-3.5">
+            <label for="editReceipt" class="flex items-center gap-3 min-h-[3.9rem] p-3 rounded-xl border border-dashed border-[#bbb7ff] bg-[#fafaff] cursor-pointer"><span class="w-9 h-9 rounded-xl grid place-items-center bg-primarysoft text-primary shrink-0">↑</span><span><strong class="block text-[#5f6674] text-[.82rem]">เปลี่ยน/เพิ่มรูปสลิป</strong><small class="block text-[#9aa3b2] text-[.68rem] mt-0.5">แตะเพื่อเลือกรูปใหม่</small></span></label>
+            <input id="editReceipt" type="file" accept="image/*" class="receipt-input" />
+            <div class="relative mt-2.5 inline-block" id="editReceiptBox" hidden><img id="editReceiptPreview" class="block max-w-full max-h-[10.5rem] object-contain rounded-xl border border-line cursor-zoom-in" alt="ตัวอย่างสลิป" /><button type="button" class="absolute -top-2 -right-2 w-7 h-7 rounded-full border-0 bg-expense text-white text-xs font-black cursor-pointer" id="editReceiptRemove" aria-label="ลบรูป">✕</button></div>
+          </div>
+        </form>
+      </div>
+      <div class="flex gap-2.5 p-4 border-t border-line"><button class="ghost flex-1 justify-center flex items-center" id="editCancel">ยกเลิก</button><button class="primary slim flex-[1.4]" id="editSave">บันทึกการแก้ไข</button></div>
+    </div>
+  </div>
+
+  <!-- ===== CONFIRM MODAL ===== -->
+  <div class="modal-overlay" id="confirmOverlay" hidden>
+    <div class="modal confirm" role="alertdialog" aria-modal="true">
+      <div class="w-15 h-15 w-[3.75rem] h-[3.75rem] rounded-full grid place-items-center mx-auto mb-4 text-2xl font-black bg-expensesoft text-expense" id="confirmIcon">!</div>
+      <h3 class="mb-2 text-[1.15rem] font-extrabold" id="confirmTitle">ยืนยันการลบ</h3>
+      <p class="mb-5 text-muted text-[.88rem] leading-relaxed" id="confirmText">ต้องการลบรายการนี้ใช่ไหม?</p>
+      <div class="flex gap-2.5"><button class="ghost flex-1 justify-center flex items-center" id="confirmCancel">ยกเลิก</button><button class="primary slim danger-btn flex-1" id="confirmOk">ลบ</button></div>
+    </div>
+  </div>
+
+  <!-- ===== COMING SOON ===== -->
+  <div class="modal-overlay" id="soonOverlay" hidden>
+    <div class="modal confirm" role="dialog" aria-modal="true">
+      <div class="w-[3.75rem] h-[3.75rem] rounded-full grid place-items-center mx-auto mb-4 text-2xl font-black bg-primarysoft text-primary">◔</div>
+      <h3 class="mb-2 text-[1.15rem] font-extrabold" id="soonTitle">เร็ว ๆ นี้</h3>
+      <p class="mb-5 text-muted text-[.88rem]">ฟีเจอร์นี้กำลังพัฒนา เร็ว ๆ นี้จะเปิดให้ใช้งานครับ</p>
+      <div class="flex"><button class="primary slim" id="soonOk">เข้าใจแล้ว</button></div>
+    </div>
+  </div>
+
+  <!-- ===== LIGHTBOX ===== -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="absolute top-5 right-5 w-11 h-11 rounded-full border-0 bg-white/15 text-white text-base cursor-pointer" id="lightboxClose" aria-label="ปิด">✕</button>
+    <img id="lightboxImg" class="max-w-full max-h-full rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,.5)]" alt="รูปสลิป" />
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
 </body>
 </html>
