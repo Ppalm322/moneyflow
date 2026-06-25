@@ -97,7 +97,12 @@
           <h1 class="mt-1 text-3xl sm:text-[2.1rem] font-black tracking-tight">สวัสดีครับ 👋</h1>
           <p class="text-muted text-[.92rem] mt-0.5">ติดตามรายรับ รายจ่าย และภาพรวมเงินของคุณ</p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-1.5 h-11 pl-3 pr-1.5 rounded-2xl bg-white/85 border border-line shadow-soft" title="สมุดของแต่ละคน">
+            <span class="text-[.95rem]">👤</span>
+            <select id="profileSelect" class="bg-transparent outline-none text-[.83rem] font-extrabold text-ink cursor-pointer max-w-[8.5rem]"></select>
+            <button type="button" id="addProfileBtn" class="w-8 h-8 rounded-xl grid place-items-center bg-primarysoft text-primary font-black text-base leading-none transition hover:bg-primary hover:text-white" title="เพิ่มคน" aria-label="เพิ่มคน">＋</button>
+          </div>
           <div class="flex items-center gap-2.5 h-11 px-4 rounded-2xl bg-white/85 border border-line text-[#4b5563] text-[.82rem] font-semibold shadow-soft">
             <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_0_5px_#f0efff]"></span><span id="todayLabel"></span>
           </div>

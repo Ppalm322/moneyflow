@@ -5,6 +5,9 @@
   const STORAGE_KEY   = "daily-money-ledger-v1";
   const CUSTOMCAT_KEY = "moneyflow-custom-categories-v1";
   const COLOR_KEY     = "moneyflow-category-colors-v1";
+  const PROFILES_KEY  = "moneyflow-profiles-v1";
+  const ACTIVEPROF_KEY= "moneyflow-active-profile-v1";
+  const DEFAULT_PROFILE = "ตัวเอง";
 
   const palette = ["#635bff","#20b7a5","#f6a84b","#ef5b62","#16a06a","#8b5cf6","#ec4899","#3b82f6","#84cc16","#f97316","#06b6d4","#d946ef"];
   const defaultExpenseCats = ["อาหาร","เดินทาง","ที่พัก","ช้อปปิ้ง","บิล/ค่าสาธารณูปโภค","สุขภาพ","ครอบครัว","ธุรกิจ","บันเทิง","อื่น ๆ"];
@@ -25,11 +28,18 @@
     getCustomCats(){ const c=this._read(CUSTOMCAT_KEY,null); return (c&&c.expense&&c.income)?c:{expense:[],income:[]}; },
     saveCustomCats(c){ this._write(CUSTOMCAT_KEY,c); },
     getColorMap(){ return this._read(COLOR_KEY,{}); },
-    saveColorMap(m){ this._write(COLOR_KEY,m); }
+    saveColorMap(m){ this._write(COLOR_KEY,m); },
+    getProfiles(){ const p=this._read(PROFILES_KEY,null); return (Array.isArray(p)&&p.length)?p:[DEFAULT_PROFILE]; },
+    saveProfiles(list){ this._write(PROFILES_KEY,list); },
+    getActiveProfile(){ return this._read(ACTIVEPROF_KEY,null); },
+    saveActiveProfile(name){ this._write(ACTIVEPROF_KEY,name); }
   };
 
   /* ===== STATE ===== */
   let entries=Store.getEntries(), customCats=Store.getCustomCats(), colorMap=Store.getColorMap();
+  let profiles=Store.getProfiles();
+  let activeProfile=Store.getActiveProfile();
+  if(!profiles.includes(activeProfile)) activeProfile=profiles[0];
   let selectedType="expense", chartRange="today", activeFilter="all", searchTerm="";
   let formReceipt="", editReceipt="", editType="expense", isSubmitting=false;
 
@@ -55,6 +65,8 @@
   function escapeHtml(s=""){ return String(s).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch])); }
   function parseAmount(v){ const n=Number(String(v).replace(/[, ]/g,"")); return Number.isFinite(n)?n:NaN; }
   const sum=list=>list.reduce((s,e)=>s+Number(e.amount||0),0);
+  const profOf=e=>e.profile||DEFAULT_PROFILE;
+  const activeEntries=()=>entries.filter(e=>profOf(e)===activeProfile);
 
   function catsFor(type){ const base=type==="expense"?defaultExpenseCats:defaultIncomeCats; const custom=(customCats[type]||[]).filter(c=>!base.includes(c)); return [...base.filter(c=>c!=="อื่น ๆ"),...custom,"อื่น ๆ"]; }
   function colorFor(c){ if(colorMap[c]) return colorMap[c]; const used=new Set(Object.values(colorMap)); let col=palette.find(x=>!used.has(x))||palette[Object.keys(colorMap).length%palette.length]; colorMap[c]=col; Store.saveColorMap(colorMap); return col; }
@@ -63,16 +75,18 @@
 
   /* ===== RENDER ===== */
   function render(){
-    const t=todayKey(), te=entries.filter(e=>e.date===t);
+    const ae=activeEntries();
+    const t=todayKey(), te=ae.filter(e=>e.date===t);
     $("incomeToday").textContent=fmt(sum(te.filter(e=>e.type==="income")));
     $("expenseToday").textContent=fmt(sum(te.filter(e=>e.type==="expense")));
-    $("balanceAll").textContent=fmt(sum(entries.filter(e=>e.type==="income"))-sum(entries.filter(e=>e.type==="expense")));
+    $("balanceAll").textContent=fmt(sum(ae.filter(e=>e.type==="income"))-sum(ae.filter(e=>e.type==="expense")));
     $("todayCount").textContent=shortFmt(te.length);
     renderChart(); renderTransactions();
   }
 
   function renderChart(){
-    const base=chartRange==="today"?entries.filter(e=>e.date===todayKey()):entries;
+    const ae=activeEntries();
+    const base=chartRange==="today"?ae.filter(e=>e.date===todayKey()):ae;
     const grouped={}; base.filter(e=>e.type==="expense").forEach(e=>grouped[e.category]=(grouped[e.category]||0)+Number(e.amount));
     const items=Object.entries(grouped).sort((a,b)=>b[1]-a[1]); const total=items.reduce((s,[,v])=>s+v,0);
     $("donutCaption").textContent=chartRange==="today"?"ค่าใช้จ่ายวันนี้":"ค่าใช้จ่ายทั้งหมด";
@@ -111,7 +125,7 @@
 
   function renderTransactions(){
     const c=$("transactionsList");
-    const sorted=[...entries].sort((a,b)=>`${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`)).filter(passesFilter).slice(0,200);
+    const sorted=[...activeEntries()].sort((a,b)=>`${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`)).filter(passesFilter).slice(0,200);
     if(!sorted.length){
       const msg=(searchTerm||activeFilter!=="all")?"ไม่พบรายการที่ตรงกับเงื่อนไข":"ยังไม่มีรายการ ลองเพิ่มรายการแรกของคุณ";
       c.innerHTML=`<div class="py-10 px-4 text-center text-[#9aa3b2] text-[.82rem]">${msg}</div>`; return;
@@ -159,7 +173,7 @@
     if(!amount||isNaN(amount)||amount<=0){ $("amount").classList.add("invalid"); $("amountError").textContent="กรุณากรอกจำนวนเงินมากกว่า 0"; $("amount").focus(); return; }
     let category=$("category").value; if(category==="__add__"||!category) category=catsFor(selectedType)[0];
     isSubmitting=true; const btn=$("submitBtn"); btn.disabled=true;
-    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(user?user.name:null) };
+    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), profile:activeProfile, date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(user?user.name:null) };
     colorFor(category); entries.unshift(entry);
     let r="ok";
     if(CLOUD){ cloudInsert(entry); } else { r=Store.saveEntries(entries); handleSaveResult(r); }
@@ -199,16 +213,17 @@
   /* ===== DELETE ===== */
   let pendingDelete=null;
   function askDelete(id){ const e=entries.find(x=>x.id===id); if(!e) return; pendingDelete={mode:"one",id}; $("confirmTitle").textContent="ลบรายการนี้?"; $("confirmText").innerHTML=`${escapeHtml(e.note||e.category)} · <strong>${fmt(e.amount)}</strong><br>การลบไม่สามารถย้อนกลับได้`; $("confirmOk").textContent="ลบรายการ"; showModal("confirmOverlay"); }
-  $("clearTodayBtn").onclick=()=>{ const n=entries.filter(e=>e.date===todayKey()).length; if(!n) return toast("วันนี้ยังไม่มีรายการ"); pendingDelete={mode:"today"}; $("confirmTitle").textContent="ลบรายการวันนี้ทั้งหมด?"; $("confirmText").innerHTML=`มีทั้งหมด <strong>${n}</strong> รายการในวันนี้<br>ประวัติ/ยอดสะสมวันอื่นจะไม่ถูกลบ`; $("confirmOk").textContent="ลบทั้งหมด"; showModal("confirmOverlay"); };
-  $("confirmOk").onclick=()=>{ if(!pendingDelete) return; if(pendingDelete.mode==="one"){ const did=pendingDelete.id; entries=entries.filter(e=>e.id!==did); if(CLOUD){ cloudDelete(did); } else { Store.saveEntries(entries); } render(); toast("ลบรายการแล้ว","success"); } else { entries=entries.filter(e=>e.date!==todayKey()); if(CLOUD){ cloudDeleteToday(); } else { Store.saveEntries(entries); } render(); toast("ลบรายการวันนี้แล้ว","success"); } pendingDelete=null; closeModal("confirmOverlay"); };
+  $("clearTodayBtn").onclick=()=>{ const n=activeEntries().filter(e=>e.date===todayKey()).length; if(!n) return toast("วันนี้ยังไม่มีรายการ"); pendingDelete={mode:"today"}; $("confirmTitle").textContent="ลบรายการวันนี้ทั้งหมด?"; $("confirmText").innerHTML=`ของ <strong>${escapeHtml(activeProfile)}</strong> มี <strong>${n}</strong> รายการในวันนี้<br>ประวัติ/ยอดสะสมวันอื่น และข้อมูลคนอื่นจะไม่ถูกลบ`; $("confirmOk").textContent="ลบทั้งหมด"; showModal("confirmOverlay"); };
+  $("confirmOk").onclick=()=>{ if(!pendingDelete) return; if(pendingDelete.mode==="one"){ const did=pendingDelete.id; entries=entries.filter(e=>e.id!==did); if(CLOUD){ cloudDelete(did); } else { Store.saveEntries(entries); } render(); toast("ลบรายการแล้ว","success"); } else { const ids=entries.filter(e=>e.date===todayKey()&&profOf(e)===activeProfile).map(e=>e.id); entries=entries.filter(e=>!ids.includes(e.id)); if(CLOUD){ cloudDeleteIds(ids); } else { Store.saveEntries(entries); } render(); toast("ลบรายการวันนี้แล้ว","success"); } pendingDelete=null; closeModal("confirmOverlay"); };
   $("confirmCancel").onclick=()=>{ pendingDelete=null; closeModal("confirmOverlay"); };
 
   /* ===== EXPORT ===== */
   $("exportBtn").onclick=()=>{
-    if(!entries.length) return toast("ยังไม่มีข้อมูลให้ส่งออก");
-    const rows=[["วันที่","เวลา","ประเภท","หมวดหมู่","รายละเอียด","จำนวนเงิน"],...entries.map(e=>[e.date,e.time,e.type==="income"?"รายรับ":"รายจ่าย",e.category,e.note,e.amount])];
+    const list=activeEntries();
+    if(!list.length) return toast("ยังไม่มีข้อมูลให้ส่งออก");
+    const rows=[["เจ้าของ","วันที่","เวลา","ประเภท","หมวดหมู่","รายละเอียด","จำนวนเงิน"],...list.map(e=>[profOf(e),e.date,e.time,e.type==="income"?"รายรับ":"รายจ่าย",e.category,e.note,e.amount])];
     const csv="﻿"+rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n");
-    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"})); a.download=`บัญชีรายรับรายจ่าย-${todayKey()}.csv`; a.click(); URL.revokeObjectURL(a.href); toast("ส่งออก CSV แล้ว","success");
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"})); a.download=`บัญชี-${activeProfile}-${todayKey()}.csv`; a.click(); URL.revokeObjectURL(a.href); toast("ส่งออก CSV แล้ว","success");
   };
 
   /* ===== SEARCH + FILTER ===== */
@@ -223,6 +238,30 @@
   function closeModal(id){ $(id).hidden=true; document.body.style.overflow=""; }
   document.querySelectorAll(".modal-overlay").forEach(ov=>ov.addEventListener("click",e=>{ if(e.target===ov){ ov.hidden=true; document.body.style.overflow=""; pendingDelete=null; } }));
   document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ document.querySelectorAll(".modal-overlay").forEach(ov=>{ if(!ov.hidden){ ov.hidden=true; document.body.style.overflow=""; } }); if(!$("lightbox").hidden) $("lightboxClose").click(); } });
+
+  /* ===== PROFILES (สมุดแยกของแต่ละคน) ===== */
+  function renderProfiles(){
+    const sel=$("profileSelect"); if(!sel) return;
+    sel.innerHTML=profiles.map(p=>`<option value="${escapeHtml(p)}"${p===activeProfile?" selected":""}>${escapeHtml(p)}</option>`).join("");
+  }
+  function setActiveProfile(name){
+    if(!profiles.includes(name)) return;
+    activeProfile=name; Store.saveActiveProfile(name); renderProfiles(); render();
+  }
+  function addProfile(){
+    const name=(prompt("ชื่อคน/โปรไฟล์ใหม่ (เช่น ลูก, แม่)","")||"").trim();
+    if(!name) return;
+    if(profiles.includes(name)){ setActiveProfile(name); return toast("มีคนนี้อยู่แล้ว สลับให้แทน"); }
+    profiles.push(name); Store.saveProfiles(profiles); setActiveProfile(name); toast(`สร้างสมุดของ "${name}" แล้ว`,"success");
+  }
+  // เพิ่มชื่อคนที่พบในข้อมูล (เช่น สร้างจากอีกเครื่องในโหมดคลาวด์) เข้ารายชื่อ
+  function mergeProfilesFromEntries(){
+    let changed=false;
+    entries.forEach(e=>{ const p=profOf(e); if(!profiles.includes(p)){ profiles.push(p); changed=true; } });
+    if(changed){ Store.saveProfiles(profiles); renderProfiles(); }
+  }
+  if($("profileSelect")) $("profileSelect").onchange=e=>setActiveProfile(e.target.value);
+  if($("addProfileBtn")) $("addProfileBtn").onclick=addProfile;
 
   /* ===== SIDEBAR NAV (scroll) + SOON ===== */
   document.querySelectorAll("#sideNav .nav-item").forEach(b=>b.onclick=()=>{
@@ -331,13 +370,16 @@
   }
 
   /* ===== CLOUD DATA (Supabase) ===== */
-  function rowToEntry(r){ return { id:r.id, type:r.type, amount:Number(r.amount), category:r.category, note:r.note||"", date:r.date, time:r.time||"00:00", receipt:r.receipt||"", createdBy:r.created_by||null, editedBy:r.edited_by||null, createdAt:r.created_at, updatedAt:r.edited_at }; }
-  function entryToRow(e){ return { id:e.id, type:e.type, amount:e.amount, category:e.category, note:e.note||"", date:e.date, time:e.time||"00:00", receipt:e.receipt||"", created_by:e.createdBy||null, edited_by:e.editedBy||null, edited_at:e.editedBy?new Date().toISOString():null }; }
+  function rowToEntry(r){ return { id:r.id, type:r.type, amount:Number(r.amount), category:r.category, note:r.note||"", profile:r.profile||DEFAULT_PROFILE, date:r.date, time:r.time||"00:00", receipt:r.receipt||"", createdBy:r.created_by||null, editedBy:r.edited_by||null, createdAt:r.created_at, updatedAt:r.edited_at }; }
+  function entryToRow(e){ return { id:e.id, type:e.type, amount:e.amount, category:e.category, note:e.note||"", profile:e.profile||DEFAULT_PROFILE, date:e.date, time:e.time||"00:00", receipt:e.receipt||"", created_by:e.createdBy||null, edited_by:e.editedBy||null, edited_at:e.editedBy?new Date().toISOString():null }; }
   async function cloudLoad(){
     if(!CLOUD||!user) return;
     const { data, error }=await sb.from("transactions").select("*").order("created_at",{ascending:false});
     if(error){ toast("โหลดข้อมูลไม่สำเร็จ: "+error.message,"error"); return; }
-    entries=(data||[]).map(rowToEntry); render();
+    entries=(data||[]).map(rowToEntry);
+    mergeProfilesFromEntries();
+    if(!profiles.includes(activeProfile)) activeProfile=profiles[0];
+    render();
     if(!realtimeOn){ subscribeRealtime(); realtimeOn=true; }
   }
   function subscribeRealtime(){
@@ -347,6 +389,7 @@
   async function cloudUpdate(e){ const { error }=await sb.from("transactions").update(entryToRow(e)).eq("id",e.id); if(error) toast("อัปเดตไม่สำเร็จ: "+error.message,"error"); }
   async function cloudDelete(id){ const { error }=await sb.from("transactions").delete().eq("id",id); if(error) toast("ลบไม่สำเร็จ: "+error.message,"error"); }
   async function cloudDeleteToday(){ const { error }=await sb.from("transactions").delete().eq("date",todayKey()); if(error) toast("ลบไม่สำเร็จ: "+error.message,"error"); }
+  async function cloudDeleteIds(ids){ if(!ids||!ids.length) return; const { error }=await sb.from("transactions").delete().in("id",ids); if(error) toast("ลบไม่สำเร็จ: "+error.message,"error"); }
 
   async function initAuth(){
     if(CLOUD){
@@ -366,6 +409,14 @@
   /* ===== INIT ===== */
   if(!Store.enabled && !CLOUD) handleSaveResult("disabled");
   initAuth();
+  // ย้ายรายการเดิม (ก่อนมีระบบโปรไฟล์) ให้เป็นของคนแรก = "ตัวเอง"
+  let _migrated=false;
+  entries.forEach(e=>{ if(!e.profile){ e.profile=DEFAULT_PROFILE; _migrated=true; } });
+  if(_migrated && !CLOUD) Store.saveEntries(entries);
+  mergeProfilesFromEntries();
+  if(!profiles.includes(activeProfile)) activeProfile=profiles[0];
+  Store.saveActiveProfile(activeProfile);
+  renderProfiles();
   entries.forEach(e=>{ if(e.type==="expense") colorFor(e.category); });
   setNow(); populateSelect($("category"),selectedType); render();
   let lastDay=todayKey();

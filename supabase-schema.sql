@@ -18,6 +18,10 @@ create table if not exists public.transactions (
   edited_at  timestamptz
 );
 
+-- ชื่อ "เจ้าของสมุด" (โปรไฟล์คน เช่น ตัวเอง/ลูก/แม่) — สมุดแยกของใครของมัน
+-- หมายเหตุ: ต่างจากคอลัมน์ owner (uuid) ด้านล่างที่ใช้แยกสิทธิ์ผู้ใช้
+alter table public.transactions add column if not exists profile text;
+
 alter table public.transactions enable row level security;
 
 -- ===== โหมด "สมุดเดียวใช้ร่วมกัน" (หลายคนเห็น/แก้ข้อมูลชุดเดียวกัน) =====
@@ -31,8 +35,16 @@ create policy "insert" on public.transactions for insert to authenticated with c
 create policy "update" on public.transactions for update to authenticated using (true);
 create policy "delete" on public.transactions for delete to authenticated using (true);
 
--- เปิด realtime ให้ทุกเครื่อง sync กันสด ๆ
-alter publication supabase_realtime add table public.transactions;
+-- เปิด realtime ให้ทุกเครื่อง sync กันสด ๆ (รันซ้ำได้ ไม่ error ถ้าเพิ่มไว้แล้ว)
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'transactions'
+  ) then
+    alter publication supabase_realtime add table public.transactions;
+  end if;
+end $$;
 
 -- ------------------------------------------------------------
 -- ทางเลือก: ถ้าอยากให้ "ต่างคนต่างมีสมุดของตัวเอง" (ไม่เห็นของคนอื่น)
