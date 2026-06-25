@@ -393,6 +393,7 @@
     sharedToMe=(data||[]).filter(s=>s.owner_id!==meId && (s.shared_with_email||"").toLowerCase()===myEmail)
       .map(s=>({ownerId:s.owner_id,ownerEmail:s.owner_email,profile:s.profile,role:s.role}));
   }
+  if($("settingsBtnMobile")) $("settingsBtnMobile").onclick=openSettings;
   if($("settingsClose")) $("settingsClose").onclick=()=>closeModal("settingsOverlay");
   if($("settingsDone")) $("settingsDone").onclick=()=>closeModal("settingsOverlay");
   if($("settingsAddProfile")) $("settingsAddProfile").onclick=()=>{ addProfile(); renderSettings(); };
