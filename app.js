@@ -185,7 +185,7 @@
     const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), profile:activeProfile, userId:(activeOwner||me()), date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(user?user.name:null) };
     colorFor(category); entries.unshift(entry);
     let r="ok";
-    if(CLOUD){ cloudInsert(entry); } else { r=Store.saveEntries(entries); handleSaveResult(r); }
+    if(CLOUD){ cloudInsert(entry); logActivity("add",entry); } else { r=Store.saveEntries(entries); handleSaveResult(r); }
     resetForm(); render();
     if(r==="ok"||r==="stripped"){ toast(r==="stripped"?"บันทึกแล้ว (พื้นที่รูปเต็ม จึงไม่เก็บสลิป)":"บันทึกรายการเรียบร้อย","success"); if(!CLOUD) checkStorageHealth(); }
     setTimeout(()=>{ isSubmitting=false; btn.disabled=false; },350);
@@ -215,7 +215,7 @@
     if(!amount||isNaN(amount)||amount<=0){ $("editAmount").classList.add("invalid"); $("editAmountError").textContent="กรุณากรอกจำนวนเงินมากกว่า 0"; return; }
     let category=$("editCategory").value; if(category==="__add__"||!category) category=catsFor(editType)[0]; colorFor(category);
     entries[idx]={...entries[idx], type:editType, amount, category, note:$("editNote").value.trim(), date:$("editDate").value||todayKey(), time:$("editTime").value||"00:00", receipt:editReceipt, updatedAt:new Date().toISOString(), editedBy:currentEditorName()};
-    if(CLOUD){ cloudUpdate(entries[idx]); } else { Store.saveEntries(entries); }
+    if(CLOUD){ cloudUpdate(entries[idx]); logActivity("edit",entries[idx]); } else { Store.saveEntries(entries); }
     closeModal("editOverlay"); render(); toast("แก้ไขรายการแล้ว","success");
   };
   $("editClose").onclick=$("editCancel").onclick=()=>closeModal("editOverlay");
@@ -224,7 +224,7 @@
   let pendingDelete=null;
   function askDelete(id){ if(!canEdit()) return toast("โหมดดูอย่างเดียว","error"); const e=entries.find(x=>x.id===id); if(!e) return; pendingDelete={mode:"one",id}; $("confirmTitle").textContent="ลบรายการนี้?"; $("confirmText").innerHTML=`${escapeHtml(e.note||e.category)} · <strong>${fmt(e.amount)}</strong><br>การลบไม่สามารถย้อนกลับได้`; $("confirmOk").textContent="ลบรายการ"; showModal("confirmOverlay"); }
   $("clearTodayBtn").onclick=()=>{ const n=activeEntries().filter(e=>e.date===todayKey()).length; if(!n) return toast("วันนี้ยังไม่มีรายการ"); pendingDelete={mode:"today"}; $("confirmTitle").textContent="ลบรายการวันนี้ทั้งหมด?"; $("confirmText").innerHTML=`ของ <strong>${escapeHtml(activeProfile)}</strong> มี <strong>${n}</strong> รายการในวันนี้<br>ประวัติ/ยอดสะสมวันอื่น และข้อมูลคนอื่นจะไม่ถูกลบ`; $("confirmOk").textContent="ลบทั้งหมด"; showModal("confirmOverlay"); };
-  $("confirmOk").onclick=()=>{ if(!pendingDelete) return; if(pendingDelete.mode==="one"){ const did=pendingDelete.id; entries=entries.filter(e=>e.id!==did); if(CLOUD){ cloudDelete(did); } else { Store.saveEntries(entries); } render(); toast("ลบรายการแล้ว","success"); } else { const ids=entries.filter(e=>e.date===todayKey()&&profOf(e)===activeProfile&&sameOwner(ownerOf(e),activeOwner)).map(e=>e.id); entries=entries.filter(e=>!ids.includes(e.id)); if(CLOUD){ cloudDeleteIds(ids); } else { Store.saveEntries(entries); } render(); toast("ลบรายการวันนี้แล้ว","success"); } pendingDelete=null; closeModal("confirmOverlay"); };
+  $("confirmOk").onclick=()=>{ if(!pendingDelete) return; if(pendingDelete.mode==="one"){ const did=pendingDelete.id; const delEnt=entries.find(e=>e.id===did); entries=entries.filter(e=>e.id!==did); if(CLOUD){ cloudDelete(did); logActivity("delete",delEnt); } else { Store.saveEntries(entries); } render(); toast("ลบรายการแล้ว","success"); } else { const ids=entries.filter(e=>e.date===todayKey()&&profOf(e)===activeProfile&&sameOwner(ownerOf(e),activeOwner)).map(e=>e.id); entries=entries.filter(e=>!ids.includes(e.id)); if(CLOUD){ cloudDeleteIds(ids); logActivity("clear",{note:`ลบรายการวันนี้ ${ids.length} รายการ`}); } else { Store.saveEntries(entries); } render(); toast("ลบรายการวันนี้แล้ว","success"); } pendingDelete=null; closeModal("confirmOverlay"); };
   $("confirmCancel").onclick=()=>{ pendingDelete=null; closeModal("confirmOverlay"); };
 
   /* ===== EXPORT ===== */
@@ -415,6 +415,47 @@
   if($("settingsAddProfile")) $("settingsAddProfile").onclick=()=>{ addProfile(); renderSettings(); };
   if($("shareAllBtn")) $("shareAllBtn").onclick=shareAllProfiles;
 
+  /* ===== ACTIVITY LOG (ประวัติการใช้งาน) ===== */
+  function logActivity(action,e){
+    if(!CLOUD||!sb||!user) return;
+    const row={ owner_id:(activeOwner||me()), profile:activeProfile, actor_email:user.email||null, actor_name:user.name||null, action, amount:(e&&e.amount)||null, category:(e&&e.category)||null, note:(e&&e.note)||null, tx_date:(e&&e.date)||null };
+    sb.from("activity_log").insert(row).then(({error})=>{ if(error) console.warn("log fail",error.message); });
+  }
+  function openActivity(){
+    if(!CLOUD||!user){ return toast("ดูประวัติได้เมื่อเข้าสู่ระบบ (โหมดคลาวด์)"); }
+    $("historySub").textContent=`โปรไฟล์ "${activeProfile}"${activeOwner?" · แชร์มา":""}`;
+    renderActivity([{loading:true}]); showModal("historyOverlay");
+    cloudLoadActivity().then(renderActivity);
+  }
+  async function cloudLoadActivity(){
+    const owner=activeOwner||me();
+    const { data, error }=await sb.from("activity_log").select("*").eq("owner_id",owner).eq("profile",activeProfile).order("created_at",{ascending:false}).limit(200);
+    if(error){ toast("โหลดประวัติไม่สำเร็จ: "+error.message,"error"); return []; }
+    return data||[];
+  }
+  function renderActivity(rows){
+    const c=$("historyList"); if(!c) return;
+    if(rows&&rows[0]&&rows[0].loading){ c.innerHTML=`<div class="py-8 text-center text-[#9aa3b2] text-[.82rem]">กำลังโหลด…</div>`; return; }
+    if(!rows||!rows.length){ c.innerHTML=`<div class="py-10 text-center text-[#9aa3b2] text-[.82rem]">ยังไม่มีประวัติของโปรไฟล์นี้<br><span class="text-[.7rem]">จะเริ่มบันทึกเมื่อมีการเพิ่ม/แก้ไข/ลบ</span></div>`; return; }
+    const label={add:["＋ เพิ่ม","bg-incomesoft text-income"],edit:["✎ แก้ไข","bg-infosoft text-info"],delete:["🗑 ลบ","bg-expensesoft text-expense"],clear:["🗑 ลบหลายรายการ","bg-expensesoft text-expense"]};
+    c.innerHTML=rows.map(r=>{
+      const m=label[r.action]||[r.action,"bg-[#f2f3f5] text-[#6b7280]"];
+      const when=new Date(r.created_at).toLocaleString("th-TH",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+      const amt=(r.amount!=null)?` · ฿${shortFmt(r.amount)}`:"";
+      const desc=[r.category,r.note].filter(Boolean).map(escapeHtml).join(" · ");
+      return `<div class="p-2.5 rounded-xl border border-line bg-white">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="px-1.5 py-0.5 rounded-full text-[.7rem] font-bold ${m[1]}">${m[0]}</span>
+          <strong class="text-[.82rem] truncate max-w-[10rem]">${escapeHtml(r.actor_name||r.actor_email||"ไม่ทราบ")}</strong>
+          <span class="ml-auto text-[#9aa3b2] text-[.68rem] whitespace-nowrap">${when}</span>
+        </div>
+        ${(desc||amt)?`<div class="text-[#6b7280] text-[.74rem] mt-1 truncate">${desc}${amt}</div>`:""}
+      </div>`;
+    }).join("");
+  }
+  if($("historyClose")) $("historyClose").onclick=()=>closeModal("historyOverlay");
+  if($("historyDone")) $("historyDone").onclick=()=>closeModal("historyOverlay");
+
   /* ===== SIDEBAR NAV (scroll) + SOON + MOBILE DRAWER ===== */
   function setSidebar(open){
     const sb=$("sidebar"), bd=$("sidebarBackdrop");
@@ -426,6 +467,7 @@
   document.querySelectorAll("#sideNav .nav-item").forEach(b=>b.onclick=()=>{
     setSidebar(false);
     if(b.dataset.soon){ $("soonTitle").textContent=b.dataset.soon; showModal("soonOverlay"); return; }
+    if(b.dataset.history){ openActivity(); return; }
     if(b.dataset.settings){ openSettings(); return; }
     document.querySelectorAll("#sideNav .nav-item").forEach(x=>x.classList.toggle("active",x===b));
     const el=document.querySelector(`[data-anchor="${b.dataset.scroll}"]`); if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
