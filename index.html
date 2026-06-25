@@ -71,7 +71,7 @@
   <div class="grid lg:grid-cols-[15.5rem_minmax(0,1fr)] min-h-screen">
 
     <!-- ===== SIDEBAR ===== -->
-    <aside class="sidebar-bg hidden lg:flex flex-col text-white sticky top-0 h-screen p-7 shadow-[18px_0_60px_rgba(17,24,39,.12)] z-10">
+    <aside id="sidebar" class="sidebar-bg flex flex-col text-white fixed lg:sticky top-0 left-0 w-[15.5rem] lg:w-auto h-screen p-7 shadow-[18px_0_60px_rgba(17,24,39,.12)] z-50 lg:z-10 -translate-x-full lg:translate-x-0 transition-transform duration-300">
       <div class="flex items-center gap-3 px-2 pb-9">
         <div class="w-11 h-11 rounded-2xl grid place-items-center font-black text-lg bg-gradient-to-br from-[#786dff] to-[#9d6cff] shadow-[0_10px_24px_rgba(99,91,255,.35)]">M</div>
         <div><strong class="block text-base">MoneyFlow</strong><small class="block text-[#9ca3b6] text-xs mt-0.5">Personal finance</small></div>
@@ -88,6 +88,8 @@
         <div><strong class="block text-[.82rem]">บันทึกอัตโนมัติ</strong><small class="block text-[#98a2b3] text-[.7rem] mt-0.5">ข้อมูลเก็บในอุปกรณ์นี้</small></div>
       </div>
     </aside>
+    <!-- backdrop สำหรับเมนูมือถือ -->
+    <div id="sidebarBackdrop" class="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" hidden></div>
 
     <!-- ===== MAIN ===== -->
     <main class="min-w-0 w-full max-w-[1480px] mx-auto px-5 sm:px-9 pt-8 pb-12">
@@ -103,7 +105,7 @@
             <select id="profileSelect" class="bg-transparent outline-none text-[.83rem] font-extrabold text-ink cursor-pointer max-w-[8.5rem]"></select>
             <button type="button" id="addProfileBtn" class="w-8 h-8 rounded-xl grid place-items-center bg-primarysoft text-primary font-black text-base leading-none transition hover:bg-primary hover:text-white" title="เพิ่มคน" aria-label="เพิ่มคน">＋</button>
           </div>
-          <button type="button" id="settingsBtnMobile" class="lg:hidden h-11 w-11 grid place-items-center rounded-2xl bg-white/85 border border-line shadow-soft text-[#4b5563] text-lg transition hover:bg-white" title="ตั้งค่า" aria-label="ตั้งค่า">⚙</button>
+          <button type="button" id="menuBtn" class="lg:hidden h-11 w-11 grid place-items-center rounded-2xl bg-navy text-white shadow-soft text-xl leading-none" title="เมนู" aria-label="เปิดเมนู">☰</button>
           <div class="flex items-center gap-2.5 h-11 px-4 rounded-2xl bg-white/85 border border-line text-[#4b5563] text-[.82rem] font-semibold shadow-soft">
             <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_0_5px_#f0efff]"></span><span id="todayLabel"></span>
           </div>

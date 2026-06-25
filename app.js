@@ -398,8 +398,16 @@
   if($("settingsDone")) $("settingsDone").onclick=()=>closeModal("settingsOverlay");
   if($("settingsAddProfile")) $("settingsAddProfile").onclick=()=>{ addProfile(); renderSettings(); };
 
-  /* ===== SIDEBAR NAV (scroll) + SOON ===== */
+  /* ===== SIDEBAR NAV (scroll) + SOON + MOBILE DRAWER ===== */
+  function setSidebar(open){
+    const sb=$("sidebar"), bd=$("sidebarBackdrop");
+    if(sb) sb.classList.toggle("-translate-x-full",!open);
+    if(bd) bd.hidden=!open;
+  }
+  if($("menuBtn")) $("menuBtn").onclick=()=>setSidebar(true);
+  if($("sidebarBackdrop")) $("sidebarBackdrop").onclick=()=>setSidebar(false);
   document.querySelectorAll("#sideNav .nav-item").forEach(b=>b.onclick=()=>{
+    setSidebar(false);
     if(b.dataset.soon){ $("soonTitle").textContent=b.dataset.soon; showModal("soonOverlay"); return; }
     if(b.dataset.settings){ openSettings(); return; }
     document.querySelectorAll("#sideNav .nav-item").forEach(x=>x.classList.toggle("active",x===b));
