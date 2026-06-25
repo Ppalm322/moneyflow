@@ -334,6 +334,22 @@
     cloudShare(profile,email,role);
   }
   function revokeShare(id){ if(confirm("ถอนสิทธิ์การแชร์นี้?")) cloudRevoke(id); }
+  function shareAllProfiles(){
+    if(!CLOUD||!user) return toast("ต้องเข้าสู่ระบบก่อนจึงจะแชร์ได้","error");
+    if(!profiles.length) return toast("ยังไม่มีโปรไฟล์ให้แชร์");
+    const email=(prompt("แชร์ทุกโปรไฟล์ให้ใคร? พิมพ์อีเมลผู้รับ:","")||"").trim().toLowerCase();
+    if(!email) return;
+    if(user.email && email===user.email.toLowerCase()) return toast("แชร์ให้ตัวเองไม่ได้");
+    const role=confirm('ให้สิทธิ์ "แก้ไข" ด้วยไหม? (กับทุกโปรไฟล์)\n\nOK = แก้ไขได้ (editor)\nCancel = ดูอย่างเดียว (viewer)')?"editor":"viewer";
+    cloudShareAll(email,role);
+  }
+  async function cloudShareAll(email,role){
+    const rows=profiles.map(p=>({ owner_id:me(), owner_email:(user&&user.email)||null, profile:p, shared_with_email:email, role }));
+    const { error }=await sb.from("profile_shares").upsert(rows,{ onConflict:"owner_id,profile,shared_with_email" });
+    if(error) return toast("แชร์ไม่สำเร็จ: "+error.message,"error");
+    toast(`แชร์ ${profiles.length} โปรไฟล์ให้ ${email} แล้ว (${role==="editor"?"แก้ไขได้":"ดูอย่างเดียว"})`,"success");
+    cloudLoadShares().then(()=>{ renderProfiles(); renderSettings(); });
+  }
   function renameProfile(oldName){
     const newName=(prompt(`เปลี่ยนชื่อ "${oldName}" เป็น:`,oldName)||"").trim();
     if(!newName||newName===oldName) return;
@@ -397,6 +413,7 @@
   if($("settingsClose")) $("settingsClose").onclick=()=>closeModal("settingsOverlay");
   if($("settingsDone")) $("settingsDone").onclick=()=>closeModal("settingsOverlay");
   if($("settingsAddProfile")) $("settingsAddProfile").onclick=()=>{ addProfile(); renderSettings(); };
+  if($("shareAllBtn")) $("shareAllBtn").onclick=shareAllProfiles;
 
   /* ===== SIDEBAR NAV (scroll) + SOON + MOBILE DRAWER ===== */
   function setSidebar(open){
