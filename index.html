@@ -81,7 +81,7 @@
         <button class="nav-item" data-scroll="chart"><span class="ic">◔</span><span>สัดส่วน</span></button>
         <button class="nav-item" data-scroll="add"><span class="ic">＋</span><span>เพิ่มรายการ</span></button>
         <button class="nav-item" data-scroll="transactions"><span class="ic">≡</span><span>รายการเงิน</span></button>
-        <button class="nav-item" data-soon="ตั้งค่า"><span class="ic">⚙</span><span>ตั้งค่า</span><span class="ml-auto text-[.58rem] font-extrabold tracking-wide px-1.5 py-0.5 rounded-full bg-white/10 text-[#cdd3e0]">เร็ว ๆ นี้</span></button>
+        <button class="nav-item" data-settings="1"><span class="ic">⚙</span><span>ตั้งค่า</span></button>
       </nav>
       <div class="mt-auto p-4 flex gap-3 items-center rounded-2xl bg-white/[.07] border border-white/[.08]">
         <span class="w-9 h-9 rounded-xl grid place-items-center bg-income/20 text-[#77e4b4] font-black shrink-0">✓</span>
@@ -314,6 +314,24 @@
         <button id="authSubmit" type="submit"
           class="w-full h-12 rounded-xl bg-primary text-white font-extrabold transition hover:bg-primaryd disabled:opacity-60 disabled:cursor-not-allowed">เข้าสู่ระบบ</button>
       </form>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS MODAL ===== -->
+  <div class="modal-overlay" id="settingsOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="flex items-center justify-between p-5 border-b border-line">
+        <h3 class="text-[1.1rem] font-extrabold tracking-tight">⚙ ตั้งค่า</h3>
+        <button class="w-9 h-9 rounded-xl border-0 bg-[#f4f5f8] text-[#6b7280] cursor-pointer" id="settingsClose" aria-label="ปิด">✕</button>
+      </div>
+      <div class="p-5">
+        <div class="kicker">PROFILES</div>
+        <h4 class="mt-1 text-[1.02rem] font-extrabold">จัดการคน</h4>
+        <p class="text-muted text-[.82rem] mt-0.5 mb-3.5">สมุดรายรับรายจ่ายแยกของแต่ละคน · แตะชื่อเพื่อสลับไปใช้</p>
+        <div id="profileList" class="flex flex-col gap-2"></div>
+        <button type="button" id="settingsAddProfile" class="ghost w-full justify-center flex items-center mt-3.5 h-11">＋ เพิ่มคน</button>
+      </div>
+      <div class="flex p-4 border-t border-line"><button class="primary slim" id="settingsDone">เสร็จสิ้น</button></div>
     </div>
   </div>
 

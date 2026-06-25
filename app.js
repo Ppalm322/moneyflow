@@ -263,9 +263,62 @@
   if($("profileSelect")) $("profileSelect").onchange=e=>setActiveProfile(e.target.value);
   if($("addProfileBtn")) $("addProfileBtn").onclick=addProfile;
 
+  /* ===== SETTINGS (จัดการคน) ===== */
+  function openSettings(){ renderSettings(); showModal("settingsOverlay"); }
+  function renderSettings(){
+    const c=$("profileList"); if(!c) return;
+    c.innerHTML=profiles.map(p=>{
+      const cnt=entries.filter(e=>profOf(e)===p).length, active=p===activeProfile;
+      return `<div class="flex items-center gap-2 p-2.5 rounded-xl border ${active?"border-primary bg-primarysoft":"border-line bg-white"}">
+        <button type="button" class="flex-1 text-left min-w-0" data-switch="${escapeHtml(p)}">
+          <strong class="block text-[.9rem] truncate">${active?'<span class="text-primary">●</span> ':""}${escapeHtml(p)}</strong>
+          <small class="text-[#9aa3b2] text-[.7rem]">${shortFmt(cnt)} รายการ${active?" · กำลังใช้":""}</small>
+        </button>
+        <button type="button" class="txbtn hover:bg-primarysoft hover:text-primary" data-rename="${escapeHtml(p)}" aria-label="แก้ชื่อ">✎</button>
+        <button type="button" class="txbtn hover:bg-expensesoft hover:text-expense" data-delprof="${escapeHtml(p)}" aria-label="ลบ">🗑</button>
+      </div>`;
+    }).join("");
+    c.querySelectorAll("[data-switch]").forEach(b=>b.onclick=()=>{ setActiveProfile(b.dataset.switch); renderSettings(); });
+    c.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>renameProfile(b.dataset.rename));
+    c.querySelectorAll("[data-delprof]").forEach(b=>b.onclick=()=>deleteProfile(b.dataset.delprof));
+  }
+  function renameProfile(oldName){
+    const newName=(prompt(`เปลี่ยนชื่อ "${oldName}" เป็น:`,oldName)||"").trim();
+    if(!newName||newName===oldName) return;
+    if(profiles.includes(newName)) return toast("มีชื่อนี้อยู่แล้ว");
+    profiles=profiles.map(p=>p===oldName?newName:p);
+    entries.forEach(e=>{ if(profOf(e)===oldName) e.profile=newName; });
+    if(activeProfile===oldName) activeProfile=newName;
+    Store.saveProfiles(profiles); Store.saveActiveProfile(activeProfile);
+    if(CLOUD){ cloudRenameProfile(oldName,newName); } else { Store.saveEntries(entries); }
+    renderProfiles(); renderSettings(); render(); toast("เปลี่ยนชื่อแล้ว","success");
+  }
+  function deleteProfile(name){
+    if(profiles.length<=1) return toast("ต้องมีอย่างน้อย 1 คน");
+    const cnt=entries.filter(e=>profOf(e)===name).length;
+    const msg=cnt? `ลบ "${name}" และรายการทั้งหมด ${cnt} รายการของคนนี้?\nลบแล้วกู้คืนไม่ได้` : `ลบ "${name}" ใช่ไหม?`;
+    if(!confirm(msg)) return;
+    const ids=entries.filter(e=>profOf(e)===name).map(e=>e.id);
+    entries=entries.filter(e=>profOf(e)!==name);
+    profiles=profiles.filter(p=>p!==name);
+    if(activeProfile===name) activeProfile=profiles[0];
+    Store.saveProfiles(profiles); Store.saveActiveProfile(activeProfile);
+    if(CLOUD){ cloudDeleteIds(ids); } else { Store.saveEntries(entries); }
+    renderProfiles(); renderSettings(); render(); toast(`ลบ "${name}" แล้ว`,"success");
+  }
+  async function cloudRenameProfile(oldName,newName){
+    if(!sb) return;
+    const { error }=await sb.from("transactions").update({profile:newName}).eq("profile",oldName);
+    if(error) toast("เปลี่ยนชื่อบนคลาวด์ไม่สำเร็จ: "+error.message,"error");
+  }
+  if($("settingsClose")) $("settingsClose").onclick=()=>closeModal("settingsOverlay");
+  if($("settingsDone")) $("settingsDone").onclick=()=>closeModal("settingsOverlay");
+  if($("settingsAddProfile")) $("settingsAddProfile").onclick=()=>{ addProfile(); renderSettings(); };
+
   /* ===== SIDEBAR NAV (scroll) + SOON ===== */
   document.querySelectorAll("#sideNav .nav-item").forEach(b=>b.onclick=()=>{
     if(b.dataset.soon){ $("soonTitle").textContent=b.dataset.soon; showModal("soonOverlay"); return; }
+    if(b.dataset.settings){ openSettings(); return; }
     document.querySelectorAll("#sideNav .nav-item").forEach(x=>x.classList.toggle("active",x===b));
     const el=document.querySelector(`[data-anchor="${b.dataset.scroll}"]`); if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
   });
