@@ -9,11 +9,15 @@
 alter table public.transactions add column if not exists user_id uuid default auth.uid();
 
 -- backfill แถวเดิมทั้งหมด -> บัญชีหลัก
+-- หาอีเมลก่อน (ไม่สนตัวพิมพ์/ช่องว่าง) ถ้าไม่เจอ -> ยกให้บัญชีแรกสุดที่สร้าง (= ตัวคุณ)
 update public.transactions
-set user_id = (select id from auth.users where email = 'ooo15252@gmail.com')
+set user_id = coalesce(
+  (select id from auth.users where lower(trim(email)) = lower('ooo15252@gmail.com')),
+  (select id from auth.users order by created_at asc limit 1)
+)
 where user_id is null;
 
--- บังคับ not null หลัง backfill (ถ้ายังมี null = หา account ไม่เจอ ให้ตรวจอีเมลก่อน)
+-- บังคับ not null หลัง backfill (ถ้ายังมี null = ไม่มี account ใน auth.users เลย)
 alter table public.transactions alter column user_id set not null;
 
 -- 2) ตารางแชร์รายโปรไฟล์ --------------------------------------
