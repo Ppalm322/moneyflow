@@ -40,6 +40,10 @@
   let profiles=Store.getProfiles();
   let activeProfile=Store.getActiveProfile();
   if(!profiles.includes(activeProfile)) activeProfile=profiles[0];
+  let activeOwner=null;   // null = สมุดของฉัน; uuid = สมุดที่ถูกแชร์มาจากคนอื่น
+  let activeRole="own";   // own | editor | viewer (สิทธิ์กับ context ปัจจุบัน)
+  let myShares=[];        // แชร์ที่ฉันเป็นเจ้าของ  [{id,profile,shared_with_email,role}]
+  let sharedToMe=[];      // โปรไฟล์ที่คนอื่นแชร์มาให้ฉัน [{ownerId,ownerEmail,profile,role}]
   let selectedType="expense", chartRange="today", activeFilter="all", searchTerm="";
   let formReceipt="", editReceipt="", editType="expense", isSubmitting=false;
 
@@ -66,7 +70,11 @@
   function parseAmount(v){ const n=Number(String(v).replace(/[, ]/g,"")); return Number.isFinite(n)?n:NaN; }
   const sum=list=>list.reduce((s,e)=>s+Number(e.amount||0),0);
   const profOf=e=>e.profile||DEFAULT_PROFILE;
-  const activeEntries=()=>entries.filter(e=>profOf(e)===activeProfile);
+  const me=()=>(user&&user.id)||null;
+  const ownerOf=e=>e.userId||null;
+  function sameOwner(a,b){ if(!CLOUD) return true; const m=me(); return (a||m)===(b||m); }
+  const canEdit=()=>activeRole!=="viewer";
+  const activeEntries=()=>entries.filter(e=>profOf(e)===activeProfile && sameOwner(ownerOf(e),activeOwner));
 
   function catsFor(type){ const base=type==="expense"?defaultExpenseCats:defaultIncomeCats; const custom=(customCats[type]||[]).filter(c=>!base.includes(c)); return [...base.filter(c=>c!=="อื่น ๆ"),...custom,"อื่น ๆ"]; }
   function colorFor(c){ if(colorMap[c]) return colorMap[c]; const used=new Set(Object.values(colorMap)); let col=palette.find(x=>!used.has(x))||palette[Object.keys(colorMap).length%palette.length]; colorMap[c]=col; Store.saveColorMap(colorMap); return col; }
@@ -139,7 +147,7 @@
         <div class="w-[2.7rem] h-[2.7rem] rounded-2xl grid place-items-center font-black text-[1.05rem] ${ec?"bg-expensesoft text-expense":"bg-incomesoft text-income"}">${iconFor(e.category,e.type)}</div>
         <div class="min-w-0"><strong class="block text-[.86rem] truncate">${escapeHtml(e.note||e.category)}</strong><div class="flex items-center gap-1.5 mt-1 text-[#98a1b0] text-[.69rem] flex-wrap"><span>${escapeHtml(e.category)}</span><span>·</span><span>${dt} ${escapeHtml(e.time||"")}</span><span>·</span>${slip}${e.editedBy?`<span>·</span><span class="text-primary/90 font-extrabold">✎ แก้ไขโดย ${escapeHtml(e.editedBy)}</span>`:""}</div></div>
         <div class="text-[.9rem] font-black whitespace-nowrap text-right ${ec?"text-expense":"text-income"}">${sign}${fmt(e.amount)}</div>
-        <div class="flex gap-1.5"><button class="txbtn hover:bg-primarysoft hover:text-primary" data-edit="${e.id}" aria-label="แก้ไข">✎</button><button class="txbtn hover:bg-expensesoft hover:text-expense" data-del="${e.id}" aria-label="ลบ">🗑</button></div>
+        ${canEdit()?`<div class="flex gap-1.5"><button class="txbtn hover:bg-primarysoft hover:text-primary" data-edit="${e.id}" aria-label="แก้ไข">✎</button><button class="txbtn hover:bg-expensesoft hover:text-expense" data-del="${e.id}" aria-label="ลบ">🗑</button></div>`:`<div></div>`}
       </div>`;
     }).join("");
     c.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
@@ -169,11 +177,12 @@
 
   $("entryForm").addEventListener("submit",e=>{
     e.preventDefault(); if(isSubmitting) return;
+    if(!canEdit()){ return toast("โหมดดูอย่างเดียว — ไม่สามารถเพิ่มรายการได้","error"); }
     const amount=parseAmount($("amount").value);
     if(!amount||isNaN(amount)||amount<=0){ $("amount").classList.add("invalid"); $("amountError").textContent="กรุณากรอกจำนวนเงินมากกว่า 0"; $("amount").focus(); return; }
     let category=$("category").value; if(category==="__add__"||!category) category=catsFor(selectedType)[0];
     isSubmitting=true; const btn=$("submitBtn"); btn.disabled=true;
-    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), profile:activeProfile, date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(user?user.name:null) };
+    const entry={ id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+"-"+Math.random(), type:selectedType, amount, category, note:$("note").value.trim(), profile:activeProfile, userId:(activeOwner||me()), date:$("entryDate").value||todayKey(), time:$("entryTime").value||"00:00", receipt:formReceipt, createdAt:new Date().toISOString(), createdBy:(user?user.name:null) };
     colorFor(category); entries.unshift(entry);
     let r="ok";
     if(CLOUD){ cloudInsert(entry); } else { r=Store.saveEntries(entries); handleSaveResult(r); }
@@ -185,6 +194,7 @@
 
   /* ===== EDIT ===== */
   function openEdit(id){
+    if(!canEdit()) return toast("โหมดดูอย่างเดียว","error");
     const e=entries.find(x=>x.id===id); if(!e) return;
     editType=e.type; editReceipt=e.receipt||"";
     $("editId").value=id;
@@ -212,9 +222,9 @@
 
   /* ===== DELETE ===== */
   let pendingDelete=null;
-  function askDelete(id){ const e=entries.find(x=>x.id===id); if(!e) return; pendingDelete={mode:"one",id}; $("confirmTitle").textContent="ลบรายการนี้?"; $("confirmText").innerHTML=`${escapeHtml(e.note||e.category)} · <strong>${fmt(e.amount)}</strong><br>การลบไม่สามารถย้อนกลับได้`; $("confirmOk").textContent="ลบรายการ"; showModal("confirmOverlay"); }
+  function askDelete(id){ if(!canEdit()) return toast("โหมดดูอย่างเดียว","error"); const e=entries.find(x=>x.id===id); if(!e) return; pendingDelete={mode:"one",id}; $("confirmTitle").textContent="ลบรายการนี้?"; $("confirmText").innerHTML=`${escapeHtml(e.note||e.category)} · <strong>${fmt(e.amount)}</strong><br>การลบไม่สามารถย้อนกลับได้`; $("confirmOk").textContent="ลบรายการ"; showModal("confirmOverlay"); }
   $("clearTodayBtn").onclick=()=>{ const n=activeEntries().filter(e=>e.date===todayKey()).length; if(!n) return toast("วันนี้ยังไม่มีรายการ"); pendingDelete={mode:"today"}; $("confirmTitle").textContent="ลบรายการวันนี้ทั้งหมด?"; $("confirmText").innerHTML=`ของ <strong>${escapeHtml(activeProfile)}</strong> มี <strong>${n}</strong> รายการในวันนี้<br>ประวัติ/ยอดสะสมวันอื่น และข้อมูลคนอื่นจะไม่ถูกลบ`; $("confirmOk").textContent="ลบทั้งหมด"; showModal("confirmOverlay"); };
-  $("confirmOk").onclick=()=>{ if(!pendingDelete) return; if(pendingDelete.mode==="one"){ const did=pendingDelete.id; entries=entries.filter(e=>e.id!==did); if(CLOUD){ cloudDelete(did); } else { Store.saveEntries(entries); } render(); toast("ลบรายการแล้ว","success"); } else { const ids=entries.filter(e=>e.date===todayKey()&&profOf(e)===activeProfile).map(e=>e.id); entries=entries.filter(e=>!ids.includes(e.id)); if(CLOUD){ cloudDeleteIds(ids); } else { Store.saveEntries(entries); } render(); toast("ลบรายการวันนี้แล้ว","success"); } pendingDelete=null; closeModal("confirmOverlay"); };
+  $("confirmOk").onclick=()=>{ if(!pendingDelete) return; if(pendingDelete.mode==="one"){ const did=pendingDelete.id; entries=entries.filter(e=>e.id!==did); if(CLOUD){ cloudDelete(did); } else { Store.saveEntries(entries); } render(); toast("ลบรายการแล้ว","success"); } else { const ids=entries.filter(e=>e.date===todayKey()&&profOf(e)===activeProfile&&sameOwner(ownerOf(e),activeOwner)).map(e=>e.id); entries=entries.filter(e=>!ids.includes(e.id)); if(CLOUD){ cloudDeleteIds(ids); } else { Store.saveEntries(entries); } render(); toast("ลบรายการวันนี้แล้ว","success"); } pendingDelete=null; closeModal("confirmOverlay"); };
   $("confirmCancel").onclick=()=>{ pendingDelete=null; closeModal("confirmOverlay"); };
 
   /* ===== EXPORT ===== */
@@ -240,13 +250,38 @@
   document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ document.querySelectorAll(".modal-overlay").forEach(ov=>{ if(!ov.hidden){ ov.hidden=true; document.body.style.overflow=""; } }); if(!$("lightbox").hidden) $("lightboxClose").click(); } });
 
   /* ===== PROFILES (สมุดแยกของแต่ละคน) ===== */
+  function profKey(owner,profile){ return (owner?"shared::"+owner:"own")+"::"+profile; }
+  function opt(val,label,cur){ return `<option value="${escapeHtml(val)}"${val===cur?" selected":""}>${escapeHtml(label)}</option>`; }
   function renderProfiles(){
     const sel=$("profileSelect"); if(!sel) return;
-    sel.innerHTML=profiles.map(p=>`<option value="${escapeHtml(p)}"${p===activeProfile?" selected":""}>${escapeHtml(p)}</option>`).join("");
+    const curKey=profKey(activeOwner,activeProfile);
+    const mine=profiles.map(p=>opt(profKey(null,p),p,curKey)).join("");
+    let html = sharedToMe.length ? `<optgroup label="ของฉัน">${mine}</optgroup>` : mine;
+    if(sharedToMe.length){
+      html += `<optgroup label="แชร์มาให้ฉัน">`+sharedToMe.map(s=>{
+        const ic=s.role==="editor"?"✎":"👁";
+        return opt(profKey(s.ownerId,s.profile),`${s.profile} · ${s.ownerEmail||"แชร์"} ${ic}`,curKey);
+      }).join("")+`</optgroup>`;
+    }
+    sel.innerHTML=html;
   }
-  function setActiveProfile(name){
-    if(!profiles.includes(name)) return;
-    activeProfile=name; Store.saveActiveProfile(name); renderProfiles(); render();
+  function updateModeUI(){
+    const ro=activeRole==="viewer";
+    const addPanel=document.querySelector('[data-anchor="add"]'); if(addPanel) addPanel.style.display=ro?"none":"";
+    const ct=$("clearTodayBtn"); if(ct) ct.style.display=ro?"none":"";
+  }
+  function setContext(owner,name,role){
+    activeOwner=owner||null; activeProfile=name; activeRole=role||"own";
+    if(!activeOwner) Store.saveActiveProfile(name);
+    renderProfiles(); updateModeUI(); render();
+  }
+  function setActiveProfile(name){ if(!profiles.includes(name)) return; setContext(null,name,"own"); }
+  function onProfileChange(val){
+    if(val&&val.indexOf("shared::")===0){
+      const rest=val.slice(8), i=rest.indexOf("::"), owner=rest.slice(0,i), name=rest.slice(i+2);
+      const s=sharedToMe.find(x=>x.ownerId===owner&&x.profile===name);
+      setContext(owner,name,s?s.role:"viewer");
+    } else { setContext(null, val.indexOf("own::")===0?val.slice(5):val, "own"); }
   }
   function addProfile(){
     const name=(prompt("ชื่อคน/โปรไฟล์ใหม่ (เช่น ลูก, แม่)","")||"").trim();
@@ -257,10 +292,10 @@
   // เพิ่มชื่อคนที่พบในข้อมูล (เช่น สร้างจากอีกเครื่องในโหมดคลาวด์) เข้ารายชื่อ
   function mergeProfilesFromEntries(){
     let changed=false;
-    entries.forEach(e=>{ const p=profOf(e); if(!profiles.includes(p)){ profiles.push(p); changed=true; } });
+    entries.forEach(e=>{ if(!sameOwner(ownerOf(e),null)) return; const p=profOf(e); if(!profiles.includes(p)){ profiles.push(p); changed=true; } });
     if(changed){ Store.saveProfiles(profiles); renderProfiles(); }
   }
-  if($("profileSelect")) $("profileSelect").onchange=e=>setActiveProfile(e.target.value);
+  if($("profileSelect")) $("profileSelect").onchange=e=>onProfileChange(e.target.value);
   if($("addProfileBtn")) $("addProfileBtn").onclick=addProfile;
 
   /* ===== SETTINGS (จัดการคน) ===== */
@@ -268,48 +303,95 @@
   function renderSettings(){
     const c=$("profileList"); if(!c) return;
     c.innerHTML=profiles.map(p=>{
-      const cnt=entries.filter(e=>profOf(e)===p).length, active=p===activeProfile;
-      return `<div class="flex items-center gap-2 p-2.5 rounded-xl border ${active?"border-primary bg-primarysoft":"border-line bg-white"}">
-        <button type="button" class="flex-1 text-left min-w-0" data-switch="${escapeHtml(p)}">
-          <strong class="block text-[.9rem] truncate">${active?'<span class="text-primary">●</span> ':""}${escapeHtml(p)}</strong>
-          <small class="text-[#9aa3b2] text-[.7rem]">${shortFmt(cnt)} รายการ${active?" · กำลังใช้":""}</small>
-        </button>
-        <button type="button" class="txbtn hover:bg-primarysoft hover:text-primary" data-rename="${escapeHtml(p)}" aria-label="แก้ชื่อ">✎</button>
-        <button type="button" class="txbtn hover:bg-expensesoft hover:text-expense" data-delprof="${escapeHtml(p)}" aria-label="ลบ">🗑</button>
+      const cnt=entries.filter(e=>profOf(e)===p && sameOwner(ownerOf(e),null)).length, active=(!activeOwner&&p===activeProfile);
+      const shares=myShares.filter(s=>s.profile===p);
+      const shareList = shares.length? `<div class="mt-2 flex flex-col gap-1">`+shares.map(s=>`<div class="flex items-center gap-2 text-[.72rem] pl-1"><span class="px-1.5 py-0.5 rounded-full font-bold ${s.role==="editor"?"bg-incomesoft text-income":"bg-infosoft text-info"}">${s.role==="editor"?"✎ แก้ไข":"👁 ดู"}</span><span class="flex-1 truncate text-[#6b7280]">${escapeHtml(s.shared_with_email)}</span><button type="button" class="text-expense font-black" data-revoke="${s.id}" aria-label="ถอนสิทธิ์">✕</button></div>`).join("")+`</div>` : "";
+      return `<div class="p-2.5 rounded-xl border ${active?"border-primary bg-primarysoft":"border-line bg-white"}">
+        <div class="flex items-center gap-2">
+          <button type="button" class="flex-1 text-left min-w-0" data-switch="${escapeHtml(p)}">
+            <strong class="block text-[.9rem] truncate">${active?'<span class="text-primary">●</span> ':""}${escapeHtml(p)}</strong>
+            <small class="text-[#9aa3b2] text-[.7rem]">${shortFmt(cnt)} รายการ${shares.length?` · แชร์ ${shares.length}`:""}</small>
+          </button>
+          <button type="button" class="txbtn hover:bg-infosoft hover:text-info" data-share="${escapeHtml(p)}" aria-label="แชร์">👥</button>
+          <button type="button" class="txbtn hover:bg-primarysoft hover:text-primary" data-rename="${escapeHtml(p)}" aria-label="แก้ชื่อ">✎</button>
+          <button type="button" class="txbtn hover:bg-expensesoft hover:text-expense" data-delprof="${escapeHtml(p)}" aria-label="ลบ">🗑</button>
+        </div>
+        ${shareList}
       </div>`;
     }).join("");
     c.querySelectorAll("[data-switch]").forEach(b=>b.onclick=()=>{ setActiveProfile(b.dataset.switch); renderSettings(); });
     c.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>renameProfile(b.dataset.rename));
     c.querySelectorAll("[data-delprof]").forEach(b=>b.onclick=()=>deleteProfile(b.dataset.delprof));
+    c.querySelectorAll("[data-share]").forEach(b=>b.onclick=()=>shareProfile(b.dataset.share));
+    c.querySelectorAll("[data-revoke]").forEach(b=>b.onclick=()=>revokeShare(b.dataset.revoke));
   }
+  function shareProfile(profile){
+    if(!CLOUD||!user) return toast("ต้องเข้าสู่ระบบก่อนจึงจะแชร์ได้","error");
+    const email=(prompt(`แชร์โปรไฟล์ "${profile}" ให้ใคร? พิมพ์อีเมลผู้รับ:`,"")||"").trim().toLowerCase();
+    if(!email) return;
+    if(user.email && email===user.email.toLowerCase()) return toast("แชร์ให้ตัวเองไม่ได้");
+    const role=confirm('ให้สิทธิ์ "แก้ไข" ด้วยไหม?\n\nOK = แก้ไขได้ (editor)\nCancel = ดูอย่างเดียว (viewer)')?"editor":"viewer";
+    cloudShare(profile,email,role);
+  }
+  function revokeShare(id){ if(confirm("ถอนสิทธิ์การแชร์นี้?")) cloudRevoke(id); }
   function renameProfile(oldName){
     const newName=(prompt(`เปลี่ยนชื่อ "${oldName}" เป็น:`,oldName)||"").trim();
     if(!newName||newName===oldName) return;
     if(profiles.includes(newName)) return toast("มีชื่อนี้อยู่แล้ว");
     profiles=profiles.map(p=>p===oldName?newName:p);
-    entries.forEach(e=>{ if(profOf(e)===oldName) e.profile=newName; });
-    if(activeProfile===oldName) activeProfile=newName;
+    entries.forEach(e=>{ if(profOf(e)===oldName && sameOwner(ownerOf(e),null)) e.profile=newName; });
+    if(activeProfile===oldName && !activeOwner) activeProfile=newName;
     Store.saveProfiles(profiles); Store.saveActiveProfile(activeProfile);
     if(CLOUD){ cloudRenameProfile(oldName,newName); } else { Store.saveEntries(entries); }
     renderProfiles(); renderSettings(); render(); toast("เปลี่ยนชื่อแล้ว","success");
   }
   function deleteProfile(name){
     if(profiles.length<=1) return toast("ต้องมีอย่างน้อย 1 คน");
-    const cnt=entries.filter(e=>profOf(e)===name).length;
+    const cnt=entries.filter(e=>profOf(e)===name && sameOwner(ownerOf(e),null)).length;
     const msg=cnt? `ลบ "${name}" และรายการทั้งหมด ${cnt} รายการของคนนี้?\nลบแล้วกู้คืนไม่ได้` : `ลบ "${name}" ใช่ไหม?`;
     if(!confirm(msg)) return;
-    const ids=entries.filter(e=>profOf(e)===name).map(e=>e.id);
-    entries=entries.filter(e=>profOf(e)!==name);
+    const ids=entries.filter(e=>profOf(e)===name && sameOwner(ownerOf(e),null)).map(e=>e.id);
+    entries=entries.filter(e=>!(profOf(e)===name && sameOwner(ownerOf(e),null)));
     profiles=profiles.filter(p=>p!==name);
-    if(activeProfile===name) activeProfile=profiles[0];
+    if(activeProfile===name){ activeProfile=profiles[0]; activeOwner=null; activeRole="own"; }
     Store.saveProfiles(profiles); Store.saveActiveProfile(activeProfile);
-    if(CLOUD){ cloudDeleteIds(ids); } else { Store.saveEntries(entries); }
+    if(CLOUD){ cloudDeleteIds(ids); cloudDeleteProfileShares(name); } else { Store.saveEntries(entries); }
     renderProfiles(); renderSettings(); render(); toast(`ลบ "${name}" แล้ว`,"success");
   }
   async function cloudRenameProfile(oldName,newName){
-    if(!sb) return;
-    const { error }=await sb.from("transactions").update({profile:newName}).eq("profile",oldName);
+    if(!sb) return; const meId=me();
+    const { error }=await sb.from("transactions").update({profile:newName}).eq("profile",oldName).eq("user_id",meId);
     if(error) toast("เปลี่ยนชื่อบนคลาวด์ไม่สำเร็จ: "+error.message,"error");
+    await sb.from("profile_shares").update({profile:newName}).eq("owner_id",meId).eq("profile",oldName);
+    cloudLoadShares().then(()=>{ renderProfiles(); });
+  }
+  async function cloudDeleteProfileShares(name){
+    if(!sb) return;
+    await sb.from("profile_shares").delete().eq("owner_id",me()).eq("profile",name);
+    cloudLoadShares().then(()=>{ renderProfiles(); });
+  }
+  async function cloudShare(profile,email,role){
+    const { error }=await sb.from("profile_shares").upsert(
+      [{ owner_id:me(), owner_email:(user&&user.email)||null, profile, shared_with_email:email, role }],
+      { onConflict:"owner_id,profile,shared_with_email" });
+    if(error) return toast("แชร์ไม่สำเร็จ: "+error.message,"error");
+    toast(`แชร์ "${profile}" ให้ ${email} แล้ว (${role==="editor"?"แก้ไขได้":"ดูอย่างเดียว"})`,"success");
+    cloudLoadShares().then(()=>{ renderProfiles(); renderSettings(); });
+  }
+  async function cloudRevoke(id){
+    const { error }=await sb.from("profile_shares").delete().eq("id",id);
+    if(error) return toast("ถอนสิทธิ์ไม่สำเร็จ: "+error.message,"error");
+    toast("ถอนสิทธิ์แล้ว","success");
+    cloudLoadShares().then(()=>{ renderProfiles(); renderSettings(); });
+  }
+  async function cloudLoadShares(){
+    if(!CLOUD||!user){ myShares=[]; sharedToMe=[]; return; }
+    const { data, error }=await sb.from("profile_shares").select("*");
+    if(error){ myShares=[]; sharedToMe=[]; return; }
+    const meId=me(), myEmail=(user.email||"").toLowerCase();
+    myShares=(data||[]).filter(s=>s.owner_id===meId).map(s=>({id:s.id,profile:s.profile,shared_with_email:s.shared_with_email,role:s.role}));
+    sharedToMe=(data||[]).filter(s=>s.owner_id!==meId && (s.shared_with_email||"").toLowerCase()===myEmail)
+      .map(s=>({ownerId:s.owner_id,ownerEmail:s.owner_email,profile:s.profile,role:s.role}));
   }
   if($("settingsClose")) $("settingsClose").onclick=()=>closeModal("settingsOverlay");
   if($("settingsDone")) $("settingsDone").onclick=()=>closeModal("settingsOverlay");
@@ -408,7 +490,7 @@
   function renderGate(){ const g=$("authGate"); if(g){ wireAuthGate(); g.hidden=!(CLOUD && !user); } }
   function setUserFromSession(session){
     const u=session&&session.user;
-    if(u){ const m=u.user_metadata||{}; user={ name:m.full_name||m.name||u.email||"ผู้ใช้", picture:m.avatar_url||m.picture||"", id:u.id }; }
+    if(u){ const m=u.user_metadata||{}; user={ name:m.full_name||m.name||u.email||"ผู้ใช้", email:u.email||"", picture:m.avatar_url||m.picture||"", id:u.id }; }
     else user=null;
   }
   function login(){
@@ -417,26 +499,32 @@
   }
   function logout(){
     if(CLOUD && sb){ sb.auth.signOut(); }
-    user=null;
+    user=null; myShares=[]; sharedToMe=[]; activeOwner=null; activeRole="own";
     if($("authPass")) $("authPass").value="";
-    renderUser(); renderGate(); toast("ออกจากระบบแล้ว");
+    renderProfiles(); updateModeUI(); renderUser(); renderGate(); toast("ออกจากระบบแล้ว");
   }
 
   /* ===== CLOUD DATA (Supabase) ===== */
-  function rowToEntry(r){ return { id:r.id, type:r.type, amount:Number(r.amount), category:r.category, note:r.note||"", profile:r.profile||DEFAULT_PROFILE, date:r.date, time:r.time||"00:00", receipt:r.receipt||"", createdBy:r.created_by||null, editedBy:r.edited_by||null, createdAt:r.created_at, updatedAt:r.edited_at }; }
-  function entryToRow(e){ return { id:e.id, type:e.type, amount:e.amount, category:e.category, note:e.note||"", profile:e.profile||DEFAULT_PROFILE, date:e.date, time:e.time||"00:00", receipt:e.receipt||"", created_by:e.createdBy||null, edited_by:e.editedBy||null, edited_at:e.editedBy?new Date().toISOString():null }; }
+  function rowToEntry(r){ return { id:r.id, type:r.type, amount:Number(r.amount), category:r.category, note:r.note||"", profile:r.profile||DEFAULT_PROFILE, userId:r.user_id||null, date:r.date, time:r.time||"00:00", receipt:r.receipt||"", createdBy:r.created_by||null, editedBy:r.edited_by||null, createdAt:r.created_at, updatedAt:r.edited_at }; }
+  function entryToRow(e){ return { id:e.id, type:e.type, amount:e.amount, category:e.category, note:e.note||"", profile:e.profile||DEFAULT_PROFILE, user_id:e.userId||me(), date:e.date, time:e.time||"00:00", receipt:e.receipt||"", created_by:e.createdBy||null, edited_by:e.editedBy||null, edited_at:e.editedBy?new Date().toISOString():null }; }
   async function cloudLoad(){
     if(!CLOUD||!user) return;
+    await cloudLoadShares();
     const { data, error }=await sb.from("transactions").select("*").order("created_at",{ascending:false});
     if(error){ toast("โหลดข้อมูลไม่สำเร็จ: "+error.message,"error"); return; }
     entries=(data||[]).map(rowToEntry);
     mergeProfilesFromEntries();
-    if(!profiles.includes(activeProfile)) activeProfile=profiles[0];
-    render();
+    if(!activeOwner && !profiles.includes(activeProfile)) activeProfile=profiles[0];
+    // ถ้ากำลังดูสมุดที่ถูกแชร์ แต่สิทธิ์ถูกถอน → กลับมาสมุดของฉัน
+    if(activeOwner && !sharedToMe.some(s=>s.ownerId===activeOwner&&s.profile===activeProfile)){ activeOwner=null; activeRole="own"; if(!profiles.includes(activeProfile)) activeProfile=profiles[0]; }
+    renderProfiles(); updateModeUI(); render();
     if(!realtimeOn){ subscribeRealtime(); realtimeOn=true; }
   }
   function subscribeRealtime(){
-    try{ sb.channel("tx").on("postgres_changes",{event:"*",schema:"public",table:"transactions"},()=>cloudLoad()).subscribe(); }catch(e){}
+    try{
+      sb.channel("tx").on("postgres_changes",{event:"*",schema:"public",table:"transactions"},()=>cloudLoad()).subscribe();
+      sb.channel("shares").on("postgres_changes",{event:"*",schema:"public",table:"profile_shares"},()=>cloudLoad()).subscribe();
+    }catch(e){}
   }
   async function cloudInsert(e){ const { error }=await sb.from("transactions").insert(entryToRow(e)); if(error) toast("บันทึกขึ้นคลาวด์ไม่สำเร็จ: "+error.message,"error"); }
   async function cloudUpdate(e){ const { error }=await sb.from("transactions").update(entryToRow(e)).eq("id",e.id); if(error) toast("อัปเดตไม่สำเร็จ: "+error.message,"error"); }
@@ -469,7 +557,7 @@
   mergeProfilesFromEntries();
   if(!profiles.includes(activeProfile)) activeProfile=profiles[0];
   Store.saveActiveProfile(activeProfile);
-  renderProfiles();
+  renderProfiles(); updateModeUI();
   entries.forEach(e=>{ if(e.type==="expense") colorFor(e.category); });
   setNow(); populateSelect($("category"),selectedType); render();
   let lastDay=todayKey();
