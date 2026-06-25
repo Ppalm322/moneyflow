@@ -541,6 +541,11 @@
     entries=(data||[]).map(rowToEntry);
     mergeProfilesFromEntries();
     if(!activeOwner && !profiles.includes(activeProfile)) activeProfile=profiles[0];
+    // ถ้าโปรไฟล์ที่เลือกอยู่ (ของฉัน) ไม่มีข้อมูลเลย แต่มีโปรไฟล์อื่นที่มีข้อมูล → เด้งไปอันที่มีข้อมูล
+    if(!activeOwner && !activeEntries().length){
+      const withData=profiles.find(p=>entries.some(e=>profOf(e)===p && sameOwner(ownerOf(e),null)));
+      if(withData){ activeProfile=withData; Store.saveActiveProfile(activeProfile); }
+    }
     // ถ้ากำลังดูสมุดที่ถูกแชร์ แต่สิทธิ์ถูกถอน → กลับมาสมุดของฉัน
     if(activeOwner && !sharedToMe.some(s=>s.ownerId===activeOwner&&s.profile===activeProfile)){ activeOwner=null; activeRole="own"; if(!profiles.includes(activeProfile)) activeProfile=profiles[0]; }
     renderProfiles(); updateModeUI(); render();
